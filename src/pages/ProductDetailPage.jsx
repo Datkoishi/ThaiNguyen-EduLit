@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowUpRight, BookOpen, CheckCircle2, Circle, Clock3, Download, ExternalLink, FileArchive, FileDown, FileSpreadsheet, FileText, Lightbulb, ListChecks, LoaderCircle, Maximize2, MessageCircle, Minimize2, Play, Presentation, RotateCcw, Send, ShieldCheck, Sparkles, Target, TimerReset } from 'lucide-react';
 import { Link, useParams } from 'react-router-dom';
 import { io } from 'socket.io-client';
-import { API_BASE, apiRequest, formatFileSize, formatLearningDuration } from '../api.js';
+import { API_BASE, SOCKET_URL, apiRequest, formatFileSize, formatLearningDuration } from '../api.js';
 import { ErrorState, PageLoader, ProductArtwork } from '../components/Common.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -67,7 +67,7 @@ export default function ProductDetailPage() {
 
   useEffect(() => {
     if (!product) return undefined;
-    const socket = io('/', { auth: { token }, transports: ['websocket', 'polling'] });
+    const socket = io(SOCKET_URL, { auth: { token }, transports: ['websocket', 'polling'] });
     socket.on('connect', () => socket.emit('subscribe:product', { productId: product.id }));
     socket.on('comment:created', (comment) => {
       setComments((current) => current.some((item) => item.id === comment.id) ? current : [...current, { ...comment, replies: comment.replies || [] }]);

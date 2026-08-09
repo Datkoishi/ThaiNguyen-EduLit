@@ -1,4 +1,6 @@
-export const API_BASE = '/api/v1';
+const API_ROOT = import.meta.env.VITE_API_BASE_URL || '';
+export const API_BASE = `${API_ROOT}/api/v1`;
+export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || API_ROOT || '/';
 
 export class ApiError extends Error {
   constructor(status, payload) {
