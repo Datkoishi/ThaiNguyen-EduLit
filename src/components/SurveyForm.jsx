@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LoaderCircle, Sparkles } from 'lucide-react';
+import { LoaderCircle, Sparkles, ChevronRight, ChevronLeft } from 'lucide-react';
 import { apiRequest } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -57,6 +57,7 @@ export default function SurveyForm({ onSuccess }) {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [currentStep, setCurrentStep] = useState(0);
 
   // Group questions by section
   const sections = [];
@@ -68,6 +69,13 @@ export default function SurveyForm({ onSuccess }) {
     }
     section.questions.push(q);
   });
+
+  const steps = [
+    { type: 'info', title: 'Thông tin chung' },
+    ...sections.map(s => ({ type: 'questions', title: s.title, data: s })),
+    { type: 'products', title: 'VII. Đánh giá từng sản phẩm' },
+    { type: 'feedback', title: 'VIII. Ý kiến đóng góp' }
+  ];
 
   const handleRatingChange = (qId, value) => {
     setForm(prev => ({
@@ -83,27 +91,45 @@ export default function SurveyForm({ onSuccess }) {
     }));
   };
 
-  const submitSurvey = async (e) => {
-    e.preventDefault();
+  const validateStep = () => {
+    const step = steps[currentStep];
+    if (step.type === 'info') {
+      if (!form.schoolClass || !form.gender) {
+        setError('Vui lòng điền đầy đủ Lớp và Giới tính.');
+        return false;
+      }
+    } else if (step.type === 'questions') {
+      for (const q of step.data.questions) {
+        if (!form.ratings[q.id]) {
+          setError('Vui lòng đánh giá tất cả các tiêu chí.');
+          return false;
+        }
+      }
+    } else if (step.type === 'products') {
+      for (const p of productEvaluations) {
+        if (!form.productRatings[p.id]) {
+          setError('Vui lòng đánh giá mức độ hữu ích của tất cả sản phẩm.');
+          return false;
+        }
+      }
+    }
     setError('');
-    
-    if (!form.schoolClass || !form.gender) {
-      setError('Vui lòng điền đầy đủ thông tin chung (Lớp và Giới tính).');
-      return;
+    return true;
+  };
+
+  const nextStep = () => {
+    if (validateStep()) {
+      setCurrentStep(s => s + 1);
     }
-    
-    for (const q of surveyQuestions) {
-      if (!form.ratings[q.id]) {
-        setError('Vui lòng đánh giá tất cả các tiêu chí từ 1 đến 5.');
-        return;
-      }
-    }
-    for (const p of productEvaluations) {
-      if (!form.productRatings[p.id]) {
-        setError('Vui lòng đánh giá mức độ hữu ích của tất cả sản phẩm.');
-        return;
-      }
-    }
+  };
+
+  const prevStep = () => {
+    setCurrentStep(s => s - 1);
+    setError('');
+  };
+
+  const submitSurvey = async () => {
+    if (!validateStep()) return;
 
     setLoading(true);
     try {
@@ -120,61 +146,77 @@ export default function SurveyForm({ onSuccess }) {
     }
   };
 
-  return (
-    <div className="survey-form-container">
-      {error && <div className="form-error survey-error">{error}</div>}
-      <form onSubmit={submitSurvey} className="survey-form">
-        
-        <div className="survey-instructions">
-          <strong>Hướng dẫn:</strong> Các em hãy đánh dấu vào một mức độ phù hợp nhất.
-          <div className="rating-legend">
-            <div className="legend-item"><span>1</span> Hoàn toàn không đồng ý</div>
-            <div className="legend-item"><span>2</span> Không đồng ý</div>
-            <div className="legend-item"><span>3</span> Phân vân</div>
-            <div className="legend-item"><span>4</span> Đồng ý</div>
-            <div className="legend-item"><span>5</span> Hoàn toàn đồng ý</div>
-          </div>
-        </div>
+  const currentStepData = steps[currentStep];
 
-        <section className="survey-section">
-          <h2>I. Thông tin chung</h2>
-          <div className="general-info-grid">
-            <label>
-              Lớp:
-              <input 
-                type="text" 
-                value={form.schoolClass} 
-                onChange={e => setForm({...form, schoolClass: e.target.value})} 
-                placeholder="VD: 6A1" 
-                maxLength={20}
-                required
-              />
-            </label>
-            <div className="gender-select">
-              <span>Giới tính:</span>
-              <div className="gender-options">
-                <label><input type="radio" name="gender" value="Nam" onChange={e => setForm({...form, gender: e.target.value})} required /> Nam</label>
-                <label><input type="radio" name="gender" value="Nữ" onChange={e => setForm({...form, gender: e.target.value})} required /> Nữ</label>
+  return (
+    <div className="survey-wizard-container">
+      <div className="wizard-progress-bar">
+        <div 
+          className="wizard-progress-fill" 
+          style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+        ></div>
+      </div>
+      <div className="wizard-progress-text">Bước {currentStep + 1} / {steps.length}: {currentStepData.title}</div>
+
+      {error && <div className="form-error survey-error">{error}</div>}
+
+      <div className="wizard-step-content animation-fade-in" key={currentStep}>
+        
+        {/* INFO STEP */}
+        {currentStepData.type === 'info' && (
+          <div className="wizard-section">
+            <div className="survey-instructions">
+              <strong>Hướng dẫn:</strong> Các em hãy đánh giá trung thực mức độ phù hợp nhất.
+              <div className="rating-legend">
+                <div className="legend-item"><span>1</span> Hoàn toàn không đồng ý</div>
+                <div className="legend-item"><span>2</span> Không đồng ý</div>
+                <div className="legend-item"><span>3</span> Phân vân</div>
+                <div className="legend-item"><span>4</span> Đồng ý</div>
+                <div className="legend-item"><span>5</span> Hoàn toàn đồng ý</div>
+              </div>
+            </div>
+            
+            <div className="general-info-grid">
+              <label className="wizard-input-group">
+                Lớp học của em:
+                <input 
+                  type="text" 
+                  value={form.schoolClass} 
+                  onChange={e => setForm({...form, schoolClass: e.target.value})} 
+                  placeholder="VD: 6A1" 
+                  maxLength={20}
+                />
+              </label>
+              <div className="wizard-input-group">
+                <span>Giới tính:</span>
+                <div className="gender-options-wizard">
+                  <label className={form.gender === 'Nam' ? 'active' : ''}>
+                    <input type="radio" name="gender" value="Nam" onChange={e => setForm({...form, gender: e.target.value})} checked={form.gender === 'Nam'} /> 
+                    👨 Nam
+                  </label>
+                  <label className={form.gender === 'Nữ' ? 'active' : ''}>
+                    <input type="radio" name="gender" value="Nữ" onChange={e => setForm({...form, gender: e.target.value})} checked={form.gender === 'Nữ'} /> 
+                    👩 Nữ
+                  </label>
+                </div>
               </div>
             </div>
           </div>
-        </section>
+        )}
 
-        <div className="survey-questions-wrap">
-          <div className="survey-table-header">
-            <div className="th-content">Nội dung đánh giá</div>
-            <div className="th-ratings">
-              <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+        {/* QUESTIONS STEP */}
+        {currentStepData.type === 'questions' && (
+          <div className="wizard-section">
+            <div className="wizard-table-header">
+              <div className="th-content">Tiêu chí đánh giá</div>
+              <div className="th-ratings">
+                <span>1</span><span>2</span><span>3</span><span>4</span><span>5</span>
+              </div>
             </div>
-          </div>
-          
-          {sections.map((section, sIndex) => (
-            <section key={sIndex} className="survey-section-group">
-              <h3>{section.title}</h3>
-              {section.questions.map((q) => (
+            <div className="wizard-questions-list">
+              {currentStepData.data.questions.map((q) => (
                 <div key={q.id} className="survey-question-row">
                   <div className="question-text">
-                    <span className="q-num">{q.id.replace('q', '')}</span>
                     <span className="q-content">{q.text}</span>
                   </div>
                   <div className="question-ratings">
@@ -186,7 +228,6 @@ export default function SurveyForm({ onSuccess }) {
                           value={val} 
                           checked={form.ratings[q.id] === val}
                           onChange={() => handleRatingChange(q.id, val)}
-                          required
                         />
                         <span className="radio-custom"></span>
                       </label>
@@ -194,68 +235,88 @@ export default function SurveyForm({ onSuccess }) {
                   </div>
                 </div>
               ))}
-            </section>
-          ))}
-        </div>
-
-        <section className="survey-section survey-products">
-          <h2>VII. Đánh giá từng sản phẩm</h2>
-          <p className="section-desc">Đánh giá mức độ hữu ích của từng học liệu.</p>
-          
-          <div className="survey-table-header products-header">
-            <div className="th-content">Sản phẩm</div>
-            <div className="th-ratings products-ratings-labels">
-              <span>Rất không hữu ích</span>
-              <span>Không hữu ích</span>
-              <span>Bình thường</span>
-              <span>Hữu ích</span>
-              <span>Rất hữu ích</span>
             </div>
           </div>
-          
-          {productEvaluations.map((p) => (
-            <div key={p.id} className="survey-question-row">
-              <div className="question-text">
-                <span className="q-content">{p.text}</span>
-              </div>
-              <div className="question-ratings">
-                {[1, 2, 3, 4, 5].map(val => (
-                  <label key={val} className="rating-radio" title={'Mức ' + val}>
-                    <input 
-                      type="radio" 
-                      name={p.id} 
-                      value={val} 
-                      checked={form.productRatings[p.id] === val}
-                      onChange={() => handleProductRatingChange(p.id, val)}
-                      required
-                    />
-                    <span className="radio-custom"></span>
-                  </label>
-                ))}
+        )}
+
+        {/* PRODUCTS STEP */}
+        {currentStepData.type === 'products' && (
+          <div className="wizard-section survey-products">
+            <p className="section-desc">Đánh giá mức độ hữu ích của từng loại học liệu.</p>
+            <div className="wizard-table-header products-header">
+              <div className="th-content">Loại học liệu</div>
+              <div className="th-ratings products-ratings-labels">
+                <span>Rất không hữu ích</span>
+                <span>Không hữu ích</span>
+                <span>Bình thường</span>
+                <span>Hữu ích</span>
+                <span>Rất hữu ích</span>
               </div>
             </div>
-          ))}
-        </section>
+            <div className="wizard-questions-list">
+              {productEvaluations.map((p) => (
+                <div key={p.id} className="survey-question-row">
+                  <div className="question-text">
+                    <span className="q-content">{p.text}</span>
+                  </div>
+                  <div className="question-ratings">
+                    {[1, 2, 3, 4, 5].map(val => (
+                      <label key={val} className="rating-radio" title={'Mức ' + val}>
+                        <input 
+                          type="radio" 
+                          name={p.id} 
+                          value={val} 
+                          checked={form.productRatings[p.id] === val}
+                          onChange={() => handleProductRatingChange(p.id, val)}
+                        />
+                        <span className="radio-custom"></span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
-        <section className="survey-section">
-          <label className="open-question">
-            <strong>Câu 1. Theo em, bộ học liệu cần bổ sung hoặc cải thiện điều gì?</strong>
-            <textarea 
-              value={form.feedback} 
-              onChange={e => setForm({...form, feedback: e.target.value})} 
-              rows={4}
-              placeholder="Nhập ý kiến của em..."
-            />
-          </label>
-        </section>
+        {/* FEEDBACK STEP */}
+        {currentStepData.type === 'feedback' && (
+          <div className="wizard-section">
+            <label className="open-question">
+              <strong>Theo em, bộ học liệu cần bổ sung hoặc cải thiện điều gì?</strong>
+              <textarea 
+                value={form.feedback} 
+                onChange={e => setForm({...form, feedback: e.target.value})} 
+                rows={5}
+                placeholder="Nhập ý kiến đóng góp của em (không bắt buộc)..."
+              />
+            </label>
+          </div>
+        )}
 
-        <div className="survey-footer">
-          <button type="submit" className="button button-primary button-large" disabled={loading}>
-            {loading ? <LoaderCircle className="spin" size={20} /> : <Sparkles size={20} />} 
-            Gửi phiếu đánh giá
-          </button>
+      </div>
+
+      <div className="wizard-footer">
+        <div className="wizard-footer-left">
+          {currentStep > 0 && (
+            <button type="button" className="button button-outline" onClick={prevStep}>
+              <ChevronLeft size={20} /> Quay lại
+            </button>
+          )}
         </div>
-      </form>
+        <div className="wizard-footer-right">
+          {currentStep < steps.length - 1 ? (
+            <button type="button" className="button button-primary" onClick={nextStep}>
+              Tiếp tục <ChevronRight size={20} />
+            </button>
+          ) : (
+            <button type="button" className="button button-primary button-large pulse-btn" onClick={submitSurvey} disabled={loading}>
+              {loading ? <LoaderCircle className="spin" size={20} /> : <Sparkles size={20} />} 
+              Hoàn tất & Gửi
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -7146,3 +7146,201 @@ select:focus-visible {
   .question-ratings { background: #f8fafc; padding: 10px 20px; border-radius: 20px; }
   .general-info-grid { grid-template-columns: 1fr; }
 }
+
+/* =========================================
+   SURVEY WIZARD STYLES (PREMIUM)
+   ========================================= */
+
+.survey-wizard-container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.wizard-progress-bar {
+  height: 8px;
+  background: #f1f5f9;
+  border-radius: 99px;
+  overflow: hidden;
+  width: 100%;
+}
+
+.wizard-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary) 0%, #a855f7 100%);
+  border-radius: 99px;
+  transition: width 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.wizard-progress-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.wizard-step-content {
+  background: white;
+  min-height: 300px;
+}
+
+.animation-fade-in {
+  animation: fadeSlide 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.wizard-section {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.wizard-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.wizard-input-group input[type="text"] {
+  height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0 16px;
+  font-size: 15px;
+  transition: all 0.2s;
+}
+
+.wizard-input-group input[type="text"]:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px rgba(108, 58, 187, 0.1);
+}
+
+.gender-options-wizard {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.gender-options-wizard label {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--muted);
+  transition: all 0.2s;
+}
+
+.gender-options-wizard label:hover {
+  background: #f8fafc;
+}
+
+.gender-options-wizard label.active {
+  border-color: var(--primary);
+  background: #f0e8ff;
+  color: var(--primary);
+}
+
+.gender-options-wizard input {
+  display: none;
+}
+
+.wizard-table-header {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 20px;
+  padding: 16px 20px;
+  background: #f8fafc;
+  border-radius: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.wizard-questions-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.wizard-questions-list .survey-question-row {
+  grid-template-columns: 1fr 280px;
+  padding: 16px 20px;
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.wizard-questions-list .survey-question-row:last-child {
+  border-bottom: none;
+}
+
+.wizard-questions-list .products-header {
+  grid-template-columns: 1fr 400px;
+}
+
+.wizard-questions-list .survey-products .survey-question-row {
+  grid-template-columns: 1fr 400px;
+}
+
+.wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid var(--border);
+}
+
+.wizard-footer-left,
+.wizard-footer-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.button-outline {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 10px 20px;
+  border-radius: 12px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.button-outline:hover {
+  background: #f1f5f9;
+}
+
+.pulse-btn {
+  animation: buttonPulse 2s infinite;
+}
+
+@keyframes buttonPulse {
+  0% { box-shadow: 0 0 0 0 rgba(108, 58, 187, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(108, 58, 187, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(108, 58, 187, 0); }
+}
+
+@media (max-width: 768px) {
+  .wizard-table-header { display: none; }
+  .wizard-questions-list .survey-question-row { 
+    grid-template-columns: 1fr; 
+    gap: 15px; 
+    padding: 20px 0; 
+  }
+}
