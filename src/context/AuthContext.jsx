@@ -54,11 +54,11 @@ export function AuthProvider({ children }) {
     }
   }, [token]);
 
-  const updateProfile = useCallback(async (fullName) => {
+  const updateProfile = useCallback(async (fullName, school) => {
     const payload = await apiRequest('/auth/me', {
       method: 'PATCH',
       token,
-      body: { fullName }
+      body: { fullName, school: school ?? null }
     });
     setUser(payload.data);
     return payload.data;

@@ -11,6 +11,7 @@ import {
   LockKeyhole,
   Mail,
   Save,
+  School,
   ShieldCheck,
   UserRound
 } from 'lucide-react';
@@ -27,12 +28,13 @@ export default function AccountPage() {
   const { user, token, updateProfile, changePassword } = useAuth();
   const navigate = useNavigate();
   const [fullName, setFullName] = useState(user?.fullName || '');
+  const [school, setSchool] = useState(user?.school || '');
   const [profileState, setProfileState] = useState({ loading: false, error: '', success: '' });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
   const [passwordState, setPasswordState] = useState({ loading: false, error: '', fields: {} });
   const [learning, setLearning] = useState(null);
 
-  useEffect(() => setFullName(user?.fullName || ''), [user?.fullName]);
+  useEffect(() => { setFullName(user?.fullName || ''); setSchool(user?.school || ''); }, [user?.fullName, user?.school]);
   useEffect(() => {
     apiRequest('/me/learning-progress', { token })
       .then((payload) => setLearning(payload.data.summary))
@@ -49,7 +51,7 @@ export default function AccountPage() {
     event.preventDefault();
     setProfileState({ loading: true, error: '', success: '' });
     try {
-      await updateProfile(fullName.trim());
+      await updateProfile(fullName.trim(), school.trim() || null);
       setProfileState({ loading: false, error: '', success: 'Thông tin hồ sơ đã được cập nhật.' });
     } catch (error) {
       setProfileState({ loading: false, error: error.message, success: '' });
@@ -106,6 +108,10 @@ export default function AccountPage() {
             <label>Họ và tên
               <span className="input-with-icon"><UserRound size={18} /><input value={fullName} onChange={(event) => setFullName(event.target.value)} minLength={2} maxLength={120} required /></span>
             </label>
+            <label>{user.role === 'TEACHER' ? 'Trường đang dạy' : 'Trường học'}
+              <span className="input-with-icon"><School size={18} /><input value={school} onChange={(event) => setSchool(event.target.value)} maxLength={120} placeholder={user.role === 'TEACHER' ? 'Ví dụ: THPT Lương Ngọc Quyến' : 'Ví dụ: THCS Hoàng Văn Thụ'} /></span>
+              <small>Hiển thị trong bảng quản lý tài khoản.</small>
+            </label>
             <label>Email
               <span className="input-with-icon is-readonly"><Mail size={18} /><input value={user.email} readOnly aria-readonly="true" /></span>
               <small>Đổi email cần một luồng xác thực riêng nên được khóa trong phiên bản hiện tại.</small>
@@ -115,7 +121,7 @@ export default function AccountPage() {
             </label>
             {profileState.error && <div className="form-error">{profileState.error}</div>}
             {profileState.success && <div className="form-success"><CheckCircle2 size={18} />{profileState.success}</div>}
-            <button className="button button-primary" disabled={profileState.loading || fullName.trim() === user.fullName}>
+            <button className="button button-primary" disabled={profileState.loading || (fullName.trim() === user.fullName && school.trim() === (user.school || ''))}>
               {profileState.loading ? <LoaderCircle className="spin" size={18} /> : <Save size={18} />} Lưu thay đổi
             </button>
           </form>

@@ -4123,6 +4123,21 @@ select:focus-visible {
 .role-teacher { color: #18728c; background: #e7f7fb; }
 .role-student { color: #29765c; background: #e8f7f1; }
 
+.school-cell {
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 160px;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.school-cell em {
+  opacity: 0.4;
+  font-style: normal;
+}
+
 .button-compact {
   min-height: 34px;
   padding: 0 11px;

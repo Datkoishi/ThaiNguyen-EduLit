@@ -151,12 +151,13 @@ export function AdminUsersPage() {
         <div className="table-toolbar"><label className="table-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm tên, email, vai trò..." /></label><span>{filteredUsers.length} kết quả</span></div>
         <div className="table-responsive">
           <table className="admin-table users-table">
-            <thead><tr><th>Tài khoản</th><th>Vai trò</th><th>Trạng thái</th><th>Ngày tạo</th><th /></tr></thead>
+            <thead><tr><th>Tài khoản</th><th>Vai trò</th><th>Trường</th><th>Trạng thái</th><th>Ngày tạo</th><th /></tr></thead>
             <tbody>
               {filteredUsers.map((item) => (
                 <tr key={item.id}>
                   <td><div className="table-product"><span className="avatar compact-avatar">{item.fullName.slice(0, 1).toUpperCase()}</span><div><strong>{item.fullName}</strong><small>{item.email}</small></div></div></td>
                   <td><span className={'role-chip role-' + item.role.toLowerCase()}>{roleLabel(item.role)}</span></td>
+                  <td><span className="school-cell">{item.school || <em>—</em>}</span></td>
                   <td><span className={'status-badge status-' + item.status.toLowerCase()}>{userStatusLabel(item.status)}</span></td>
                   <td>{dateTimeLabel(item.createdAt)}</td>
                   <td>
