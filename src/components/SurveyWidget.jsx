@@ -6,27 +6,18 @@ import { useAuth } from '../context/AuthContext.jsx';
 export default function SurveyWidget() {
   const { user } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [isDone, setIsDone] = useState(true); // Default true to avoid flash
+  const [forceUpdate, setForceUpdate] = useState(0);
 
-  useEffect(() => {
-    // Show for STUDENT and TEACHER
-    if (user && (user.role === 'STUDENT' || user.role === 'TEACHER')) {
-      const done = localStorage.getItem(`survey_done_${user.id}`);
-      if (!done) {
-        setIsDone(false);
-      }
-    }
-  }, [user]);
+  if (!user || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) return null;
+
+  const isDone = localStorage.getItem(`survey_done_${user.id}`);
+  if (isDone) return null;
 
   const handleSuccess = () => {
-    if (user) {
-      localStorage.setItem(`survey_done_${user.id}`, 'true');
-    }
-    setIsDone(true);
+    localStorage.setItem(`survey_done_${user.id}`, 'true');
     setIsOpen(false);
+    setForceUpdate(v => v + 1); // trigger re-render to hide
   };
-
-  if (isDone || !user || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) return null;
 
   return (
     <>
