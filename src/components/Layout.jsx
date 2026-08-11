@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { Link, NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
+import SurveyWidget from './SurveyWidget.jsx';
 
 const publicNav = [
   { to: '/', label: 'Trang chủ', icon: Home, end: true },
@@ -172,6 +173,7 @@ export function AppLayout() {
         </header>
         <Outlet />
       </main>
+      <SurveyWidget />
     </div>
   );
 }
