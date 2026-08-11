@@ -35,7 +35,6 @@ const publicNav = [
   { to: '/hoc-lieu/video-tuong-tac', label: 'Video tương tác', icon: Video },
   { to: '/hoc-lieu/tro-choi-tuong-tac', label: 'Trò chơi tương tác', icon: Gamepad2 },
   { to: '/hoc-lieu/mo-phong-tuong-tac', label: 'Sơ đồ tương tác', icon: FlaskConical },
-  { to: '/khao-sat', label: 'Đánh giá học liệu', icon: ClipboardList },
   { to: '/tim-kiem', label: 'Tìm kiếm học liệu', icon: Search }
 ];
 

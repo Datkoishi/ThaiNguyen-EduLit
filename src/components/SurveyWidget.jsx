@@ -21,15 +21,16 @@ export default function SurveyWidget() {
 
   return (
     <>
-      <button 
-        className="survey-fab" 
-        onClick={() => setIsOpen(true)}
-        aria-label="Làm khảo sát"
-        title="Làm khảo sát đánh giá học liệu"
-      >
-        <span className="survey-fab-icon"><ClipboardList size={24} /></span>
-        <span className="survey-fab-text">Đánh giá học liệu</span>
-      </button>
+      <div className="survey-toolbox" onClick={() => setIsOpen(true)}>
+        <div className="toolbox-icon">
+          <ClipboardList size={28} />
+        </div>
+        <div className="toolbox-content">
+          <strong>Đánh giá học liệu</strong>
+          <span>Dành 1 phút góp ý để nhận quà nhé!</span>
+        </div>
+        <button className="toolbox-button">Bắt đầu</button>
+      </div>
 
       {isOpen && (
         <div className="survey-modal-overlay">
