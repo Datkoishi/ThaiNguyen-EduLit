@@ -9,8 +9,8 @@ export default function SurveyWidget() {
   const [isDone, setIsDone] = useState(true); // Default true to avoid flash
 
   useEffect(() => {
-    // Only show for STUDENT
-    if (user && user.role === 'STUDENT') {
+    // Show for STUDENT and TEACHER
+    if (user && (user.role === 'STUDENT' || user.role === 'TEACHER')) {
       const done = localStorage.getItem(`survey_done_${user.id}`);
       if (!done) {
         setIsDone(false);
@@ -26,7 +26,7 @@ export default function SurveyWidget() {
     setIsOpen(false);
   };
 
-  if (isDone || !user || user.role !== 'STUDENT') return null;
+  if (isDone || !user || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) return null;
 
   return (
     <>
