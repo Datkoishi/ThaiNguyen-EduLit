@@ -10,6 +10,7 @@ import {
   FlaskConical,
   GraduationCap,
   Home,
+  ClipboardList,
   LogIn,
   LogOut,
   Menu,
@@ -33,6 +34,7 @@ const publicNav = [
   { to: '/hoc-lieu/video-tuong-tac', label: 'Video tương tác', icon: Video },
   { to: '/hoc-lieu/tro-choi-tuong-tac', label: 'Trò chơi tương tác', icon: Gamepad2 },
   { to: '/hoc-lieu/mo-phong-tuong-tac', label: 'Sơ đồ tương tác', icon: FlaskConical },
+  { to: '/khao-sat', label: 'Đánh giá học liệu', icon: ClipboardList },
   { to: '/tim-kiem', label: 'Tìm kiếm học liệu', icon: Search }
 ];
 
@@ -91,6 +93,7 @@ export function AppLayout() {
     { to: '/quan-tri/phan-loai', label: 'Danh mục & Môn/Khối', icon: Tags },
     { to: '/quan-tri/tai-khoan', label: 'Quản lý tài khoản', icon: Users },
     { to: '/quan-tri/binh-luan', label: 'Bình luận', icon: MessageSquareText },
+    { to: '/quan-tri/khao-sat', label: 'Kết quả khảo sát', icon: ClipboardList },
     { to: '/quan-tri/nhat-ky', label: 'Nhật ký quản trị', icon: ScrollText }
   ];
   const teacherItems = [

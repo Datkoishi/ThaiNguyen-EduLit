@@ -347,3 +347,20 @@ export function AdminAuditPage() {
     </div>
   );
 }
+
+export function AdminSurveyPage() {
+  return (
+    <div className="page admin-operations-page">
+      <header className="admin-title">
+        <div>
+          <span className="section-kicker">Phân tích</span>
+          <h1>Kết quả khảo sát</h1>
+          <p>Thống kê đánh giá chất lượng bộ học liệu từ học sinh.</p>
+        </div>
+      </header>
+      <div className="standalone-state">
+        <p>Tính năng hiển thị thống kê đang được phát triển. Vui lòng chờ cập nhật Backend.</p>
+      </div>
+    </div>
+  );
+}

@@ -8,10 +8,11 @@ import CataloguePage from './pages/CataloguePage.jsx';
 import ProductDetailPage from './pages/ProductDetailPage.jsx';
 import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage } from './pages/AuthPages.jsx';
 import { AdminAssetsPage, AdminDashboardPage, AdminProductsPage, CreateProductPage, TeacherProductsPage } from './pages/AdminPages.jsx';
-import { AdminAuditPage, AdminCommentsPage, AdminUsersPage } from './pages/AdminOperationsPages.jsx';
+import { AdminAuditPage, AdminCommentsPage, AdminUsersPage, AdminSurveyPage } from './pages/AdminOperationsPages.jsx';
 import AdminMetadataPage from './pages/AdminMetadataPage.jsx';
 import AccountPage from './pages/AccountPage.jsx';
 import LandingPage from './pages/LandingPage.jsx';
+import SurveyPage from './pages/SurveyPage.jsx';
 import { Link } from 'react-router-dom';
 
 function RequireRole({ roles, children }) {
@@ -76,6 +77,7 @@ export default function App() {
         <Route path="tim-kiem" element={<CataloguePage />} />
         <Route path="san-pham/:slug" element={<ProductDetailPage />} />
         <Route path="tai-khoan" element={<AccountPage />} />
+        <Route path="khao-sat" element={<RequireRole roles={['STUDENT', 'TEACHER', 'ADMIN']}><SurveyPage /></RequireRole>} />
         <Route path="tai-lieu-giao-vien" element={<RequireRole roles={['TEACHER', 'ADMIN']}><CataloguePage teacherOnly /></RequireRole>} />
         <Route path="quan-tri" element={<RequireRole roles={['ADMIN']}><AdminDashboardPage /></RequireRole>} />
         <Route path="quan-tri/san-pham" element={<RequireRole roles={['ADMIN']}><AdminProductsPage /></RequireRole>} />
@@ -85,6 +87,7 @@ export default function App() {
         <Route path="quan-tri/phan-loai" element={<RequireRole roles={['ADMIN']}><AdminMetadataPage /></RequireRole>} />
         <Route path="quan-tri/tai-khoan" element={<RequireRole roles={['ADMIN']}><AdminUsersPage /></RequireRole>} />
         <Route path="quan-tri/binh-luan" element={<RequireRole roles={['ADMIN']}><AdminCommentsPage /></RequireRole>} />
+        <Route path="quan-tri/khao-sat" element={<RequireRole roles={['ADMIN']}><AdminSurveyPage /></RequireRole>} />
         <Route path="quan-tri/nhat-ky" element={<RequireRole roles={['ADMIN']}><AdminAuditPage /></RequireRole>} />
         <Route path="giao-vien/hoc-lieu" element={<RequireRole roles={['TEACHER']}><TeacherProductsPage /></RequireRole>} />
         <Route path="giao-vien/hoc-lieu/tao-moi" element={<RequireRole roles={['TEACHER']}><CreateProductPage teacherMode /></RequireRole>} />
