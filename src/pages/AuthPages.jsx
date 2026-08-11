@@ -149,15 +149,9 @@ export function RegisterPage() {
         >
           <ShieldCheck size={24} />
           <span>Giáo viên</span>
-          <small>Tạo và quản lý học liệu, chờ Admin xét duyệt.</small>
+          <small>Tạo và quản lý học liệu dành cho lớp học.</small>
         </button>
       </div>
-
-      {role === 'TEACHER' && (
-        <div className="role-notice">
-          <ShieldCheck size={16} /> Tài khoản Giáo viên sẽ được Admin xét duyệt trước khi kích hoạt đầy đủ quyền.
-        </div>
-      )}
 
       <form onSubmit={submit} className="stack-form">
         <label>Họ và tên<span className="input-with-icon"><UserRound size={18} /><input value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required minLength={2} /></span></label>
