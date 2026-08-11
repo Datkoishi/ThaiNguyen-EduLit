@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Ban,
   CheckCircle2,
+  ClipboardList,
   Clock3,
   Eye,
   KeyRound,
@@ -349,6 +350,59 @@ export function AdminAuditPage() {
 }
 
 export function AdminSurveyPage() {
+  const { token } = useAuth();
+  const [surveys, setSurveys] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  const load = async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const payload = await apiRequest('/admin/surveys', { token });
+      setSurveys(payload.data || []);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { load(); }, [token]);
+
+  // Compute averages
+  const total = surveys.length;
+  let overallSum = 0;
+  let qCount = 0;
+  
+  const productAverages = {
+    prod_video: { sum: 0, count: 0 },
+    prod_comic: { sum: 0, count: 0 },
+    prod_game: { sum: 0, count: 0 },
+    prod_simulation: { sum: 0, count: 0 }
+  };
+
+  surveys.forEach(s => {
+    const r = s.ratings || {};
+    Object.values(r).forEach(val => {
+      overallSum += Number(val);
+      qCount++;
+    });
+    
+    const pr = s.productRatings || {};
+    Object.keys(pr).forEach(k => {
+      if (productAverages[k] !== undefined) {
+        productAverages[k].sum += Number(pr[k]);
+        productAverages[k].count++;
+      }
+    });
+  });
+
+  const overallAvg = qCount > 0 ? (overallSum / qCount).toFixed(2) : 0;
+
+  if (loading) return <PageLoader label="Đang tải dữ liệu khảo sát..." />;
+  if (error) return <ErrorState message={error} onRetry={load} />;
+
   return (
     <div className="page admin-operations-page">
       <header className="admin-title">
@@ -357,10 +411,89 @@ export function AdminSurveyPage() {
           <h1>Kết quả khảo sát</h1>
           <p>Thống kê đánh giá chất lượng bộ học liệu từ học sinh.</p>
         </div>
+        <button className="button button-secondary" onClick={load}><RotateCcw size={17} /> Làm mới</button>
       </header>
-      <div className="standalone-state">
-        <p>Tính năng hiển thị thống kê đang được phát triển. Vui lòng chờ cập nhật Backend.</p>
+      
+      <div className="dashboard-grid" style={{ marginBottom: 30 }}>
+        <div className="stat-card">
+          <span className="stat-icon"><ClipboardList size={24} /></span>
+          <div className="stat-info">
+            <strong>{total}</strong>
+            <span>Tổng số phiếu</span>
+          </div>
+        </div>
+        <div className="stat-card">
+          <span className="stat-icon"><CheckCircle2 size={24} /></span>
+          <div className="stat-info">
+            <strong>{overallAvg} / 5.0</strong>
+            <span>Điểm đánh giá trung bình</span>
+          </div>
+        </div>
       </div>
+
+      <section className="admin-table-card">
+        <div className="table-toolbar">
+          <h3>Chi tiết đánh giá từng sản phẩm</h3>
+        </div>
+        <div className="table-responsive">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Video tương tác</th>
+                <th>Truyện / Sách tương tác</th>
+                <th>Trò chơi tương tác</th>
+                <th>Sơ đồ / Mô phỏng</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{productAverages.prod_video.count > 0 ? (productAverages.prod_video.sum / productAverages.prod_video.count).toFixed(2) : '—'} / 5.0</td>
+                <td>{productAverages.prod_comic.count > 0 ? (productAverages.prod_comic.sum / productAverages.prod_comic.count).toFixed(2) : '—'} / 5.0</td>
+                <td>{productAverages.prod_game.count > 0 ? (productAverages.prod_game.sum / productAverages.prod_game.count).toFixed(2) : '—'} / 5.0</td>
+                <td>{productAverages.prod_simulation.count > 0 ? (productAverages.prod_simulation.sum / productAverages.prod_simulation.count).toFixed(2) : '—'} / 5.0</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="admin-table-card" style={{ marginTop: 30 }}>
+        <div className="table-toolbar">
+          <h3>Danh sách phiếu đã gửi</h3>
+          <span>{total} kết quả</span>
+        </div>
+        <div className="table-responsive">
+          <table className="admin-table">
+            <thead>
+              <tr>
+                <th>Học sinh</th>
+                <th>Email</th>
+                <th>Lớp</th>
+                <th>Ngày gửi</th>
+                <th>Góp ý</th>
+              </tr>
+            </thead>
+            <tbody>
+              {surveys.map(s => (
+                <tr key={s.id}>
+                  <td><strong>{s.userFullName || '—'}</strong></td>
+                  <td>{s.userEmail || '—'}</td>
+                  <td>{s.schoolClass || '—'} ({s.gender || '—'})</td>
+                  <td>{dateTimeLabel(s.createdAt)}</td>
+                  <td style={{ maxWidth: 300, whiteSpace: 'normal' }}>
+                    {s.feedback || <em className="muted">Không có</em>}
+                  </td>
+                </tr>
+              ))}
+              {surveys.length === 0 && (
+                <tr>
+                  <td colSpan="5" className="empty-cell">Chưa có khảo sát nào được gửi.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

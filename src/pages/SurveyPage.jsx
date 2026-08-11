@@ -42,7 +42,7 @@ const productEvaluations = [
   { id: 'prod_video', text: 'Video tương tác' },
   { id: 'prod_comic', text: 'Truyện tranh số / Sách tương tác' },
   { id: 'prod_game', text: 'Trò chơi tương tác' },
-  { id: 'prod_map', text: 'Sơ đồ' },
+  { id: 'prod_simulation', text: 'Sơ đồ / Mô phỏng' },
 ];
 
 export default function SurveyPage() {
