@@ -28,13 +28,14 @@ const dateTimeLabel = (value) => value
   : '—';
 
 const roleLabel = (role) => role === 'ADMIN' ? 'Admin' : role === 'TEACHER' ? 'Giáo viên' : 'Học sinh';
-const userStatusLabel = (status) => status === 'ACTIVE' ? 'Đang hoạt động' : status === 'SUSPENDED' ? 'Đã khóa' : 'Chờ xác thực';
+const userStatusLabel = (status) => status === 'ACTIVE' ? 'Đang hoạt động' : status === 'SUSPENDED' ? 'Đã khóa' : status === 'PENDING_VERIFICATION' ? 'Chờ duyệt' : 'Chờ xác thực';
 
 export function AdminUsersPage() {
   const { token, user: currentUser } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [busyApproveId, setBusyApproveId] = useState(null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [query, setQuery] = useState('');
@@ -63,6 +64,23 @@ export function AdminUsersPage() {
     const term = query.trim().toLocaleLowerCase('vi');
     return users.filter((item) => !term || [item.fullName, item.email, roleLabel(item.role), userStatusLabel(item.status)].join(' ').toLocaleLowerCase('vi').includes(term));
   }, [users, query]);
+
+  const pendingTeachers = useMemo(() => users.filter((item) => item.role === 'TEACHER' && item.status === 'PENDING_VERIFICATION'), [users]);
+
+  const approveUser = async (item) => {
+    setBusyApproveId(item.id);
+    setError('');
+    setNotice('');
+    try {
+      await apiRequest('/admin/users/' + item.id + '/approve', { method: 'POST', token });
+      setNotice('Đã duyệt và kích hoạt tài khoản Giáo viên: ' + item.fullName);
+      await load();
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusyApproveId(null);
+    }
+  };
 
   const createUser = async (event) => {
     event.preventDefault();
@@ -133,6 +151,16 @@ export function AdminUsersPage() {
         <span className="admin-title-stat"><Users size={20} /><strong>{users.length}</strong> tài khoản</span>
       </div>
 
+      {pendingTeachers.length > 0 && (
+        <div className="pending-teachers-banner">
+          <ShieldCheck size={20} />
+          <div>
+            <strong>{pendingTeachers.length} giáo viên đang chờ xét duyệt</strong>
+            <span>Xem bên dưới và bấm nút <em>Duyệt</em> để kích hoạt tài khoản.</span>
+          </div>
+        </div>
+      )}
+
       <section className="form-section operation-create-panel">
         <div className="form-section-title"><span><Plus size={19} /></span><div><h2>Cấp tài khoản mới</h2><p>Tài khoản do Admin tạo được xác thực và kích hoạt ngay.</p></div></div>
         <form className="operation-form-grid" onSubmit={createUser}>
@@ -161,6 +189,16 @@ export function AdminUsersPage() {
                   <td>{dateTimeLabel(item.createdAt)}</td>
                   <td>
                     {item.role !== 'ADMIN' && item.id !== currentUser.id && <div className="table-actions">
+                      {item.role === 'TEACHER' && item.status === 'PENDING_VERIFICATION' && (
+                        <button
+                          className="button button-primary button-compact approve-btn"
+                          onClick={() => approveUser(item)}
+                          disabled={busyApproveId === item.id}
+                          aria-label={'Duyệt tài khoản ' + item.fullName}
+                        >
+                          {busyApproveId === item.id ? <LoaderCircle className="spin" size={15} /> : <CheckCircle2 size={15} />} Duyệt
+                        </button>
+                      )}
                       <button className="icon-button" onClick={() => beginEdit(item)} aria-label={'Sửa ' + item.fullName}><Pencil size={17} /></button>
                       <button className="icon-button" onClick={() => { setResetId(item.id); setEditingId(null); setResetPassword(''); }} aria-label={'Đặt lại mật khẩu ' + item.fullName}><KeyRound size={17} /></button>
                     </div>}

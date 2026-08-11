@@ -3546,10 +3546,60 @@ select:focus-visible {
   background: #e5f6ef;
 }
 
-.status-suspended,
-.status-pending_verification {
+.status-suspended {
   color: #9a4b55;
   background: #fdebed;
+}
+
+.status-pending_verification {
+  color: #7a5000;
+  background: #fff3cd;
+}
+
+/* Pending teachers banner on admin users page */
+.pending-teachers-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  background: #fffbeb;
+  border: 1px solid #f5d97a;
+  border-radius: 14px;
+  color: #7a5000;
+}
+
+.pending-teachers-banner svg {
+  flex-shrink: 0;
+  color: #c08a00;
+}
+
+.pending-teachers-banner div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+}
+
+.pending-teachers-banner strong {
+  font-weight: 700;
+}
+
+.pending-teachers-banner span {
+  font-size: 12px;
+  color: #9a6900;
+}
+
+.pending-teachers-banner em {
+  font-style: normal;
+  font-weight: 700;
+}
+
+.approve-btn {
+  font-size: 12px;
+  padding: 6px 12px;
+  gap: 5px;
+  white-space: nowrap;
 }
 
 .button-danger {
