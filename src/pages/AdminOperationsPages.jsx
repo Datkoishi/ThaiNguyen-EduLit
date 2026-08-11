@@ -23,6 +23,10 @@ import { Link } from 'react-router-dom';
 import { apiRequest } from '../api.js';
 import { ErrorState, PageLoader } from '../components/Common.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend
+} from 'recharts';
 
 const dateTimeLabel = (value) => value
   ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -370,10 +374,30 @@ export function AdminSurveyPage() {
 
   useEffect(() => { load(); }, [token]);
 
-  // Compute averages
+  // Compute statistics
   const total = surveys.length;
   let overallSum = 0;
   let qCount = 0;
+  
+  const genderDataMap = { 'Nam': 0, 'Nữ': 0, 'Khác': 0 };
+  
+  const sectionScores = {
+    'Nội dung': { sum: 0, count: 0 },
+    'Sư phạm': { sum: 0, count: 0 },
+    'Giao diện': { sum: 0, count: 0 },
+    'Tương tác': { sum: 0, count: 0 },
+    'Hiệu quả': { sum: 0, count: 0 },
+    'Hứng thú': { sum: 0, count: 0 }
+  };
+
+  const qMap = {
+    q1: 'Nội dung', q2: 'Nội dung', q3: 'Nội dung', q4: 'Nội dung', q5: 'Nội dung',
+    q6: 'Sư phạm', q7: 'Sư phạm', q8: 'Sư phạm', q9: 'Sư phạm',
+    q11: 'Giao diện', q12: 'Giao diện', q13: 'Giao diện', q14: 'Giao diện', q15: 'Giao diện',
+    q21: 'Tương tác', q22: 'Tương tác', q23: 'Tương tác', q24: 'Tương tác',
+    q26: 'Hiệu quả', q27: 'Hiệu quả', q28: 'Hiệu quả', q29: 'Hiệu quả', q30: 'Hiệu quả',
+    q36: 'Hứng thú', q37: 'Hứng thú', q38: 'Hứng thú'
+  };
   
   const productAverages = {
     prod_video: { sum: 0, count: 0 },
@@ -383,10 +407,20 @@ export function AdminSurveyPage() {
   };
 
   surveys.forEach(s => {
+    if (s.gender) {
+      if (genderDataMap[s.gender] !== undefined) genderDataMap[s.gender]++;
+      else genderDataMap['Khác']++;
+    }
+
     const r = s.ratings || {};
-    Object.values(r).forEach(val => {
-      overallSum += Number(val);
+    Object.keys(r).forEach(k => {
+      overallSum += Number(r[k]);
       qCount++;
+      const section = qMap[k];
+      if (section) {
+        sectionScores[section].sum += Number(r[k]);
+        sectionScores[section].count++;
+      }
     });
     
     const pr = s.productRatings || {};
@@ -400,6 +434,37 @@ export function AdminSurveyPage() {
 
   const overallAvg = qCount > 0 ? (overallSum / qCount).toFixed(2) : 0;
 
+  // Chart Data
+  const pieData = Object.keys(genderDataMap)
+    .filter(k => genderDataMap[k] > 0)
+    .map(k => ({ name: k, value: genderDataMap[k] }));
+
+  const sectionBarData = Object.keys(sectionScores).map(k => ({
+    name: k,
+    'Điểm TB': sectionScores[k].count > 0 ? Number((sectionScores[k].sum / sectionScores[k].count).toFixed(2)) : 0
+  }));
+
+  const productBarData = [
+    { name: 'Video', 'Điểm TB': productAverages.prod_video.count > 0 ? Number((productAverages.prod_video.sum / productAverages.prod_video.count).toFixed(2)) : 0 },
+    { name: 'Truyện số', 'Điểm TB': productAverages.prod_comic.count > 0 ? Number((productAverages.prod_comic.sum / productAverages.prod_comic.count).toFixed(2)) : 0 },
+    { name: 'Trò chơi', 'Điểm TB': productAverages.prod_game.count > 0 ? Number((productAverages.prod_game.sum / productAverages.prod_game.count).toFixed(2)) : 0 },
+    { name: 'Sơ đồ', 'Điểm TB': productAverages.prod_simulation.count > 0 ? Number((productAverages.prod_simulation.sum / productAverages.prod_simulation.count).toFixed(2)) : 0 }
+  ];
+
+  const PIE_COLORS = ['#3b82f6', '#ec4899', '#8b5cf6'];
+
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '10px 15px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
+          <p style={{ margin: '0 0 5px', fontWeight: 'bold' }}>{label || payload[0].name}</p>
+          <p style={{ margin: 0, color: payload[0].color || 'var(--primary)' }}>{payload[0].name}: {payload[0].value}</p>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading) return <PageLoader label="Đang tải dữ liệu khảo sát..." />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
@@ -409,7 +474,7 @@ export function AdminSurveyPage() {
         <div>
           <span className="section-kicker">Phân tích</span>
           <h1>Kết quả khảo sát</h1>
-          <p>Thống kê đánh giá chất lượng bộ học liệu từ học sinh.</p>
+          <p>Thống kê chi tiết đánh giá từ học sinh qua các biểu đồ phân tích.</p>
         </div>
         <button className="button button-secondary" onClick={load}><RotateCcw size={17} /> Làm mới</button>
       </header>
@@ -431,35 +496,59 @@ export function AdminSurveyPage() {
         </div>
       </div>
 
+      {total > 0 && (
+        <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '30px', marginBottom: '30px' }}>
+          
+          <div className="admin-table-card" style={{ padding: '20px' }}>
+            <h3 style={{ marginBottom: '20px', fontSize: '16px' }}>Tỉ lệ giới tính</h3>
+            <div style={{ height: 250 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                  </Pie>
+                  <RechartsTooltip content={<CustomTooltip />} />
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          <div className="admin-table-card" style={{ padding: '20px' }}>
+            <h3 style={{ marginBottom: '20px', fontSize: '16px' }}>Điểm trung bình theo tiêu chí</h3>
+            <div style={{ height: 250 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={sectionBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 5]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(108, 58, 187, 0.05)' }} />
+                  <Bar dataKey="Điểm TB" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={40} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          
+          <div className="admin-table-card" style={{ padding: '20px', gridColumn: '1 / -1' }}>
+            <h3 style={{ marginBottom: '20px', fontSize: '16px' }}>Đánh giá mức độ hữu ích của Sản phẩm</h3>
+            <div style={{ height: 300 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={productBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="name" tick={{ fontSize: 13 }} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0, 5]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
+                  <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(16, 185, 129, 0.05)' }} />
+                  <Bar dataKey="Điểm TB" fill="#10b981" radius={[4, 4, 0, 0]} barSize={50} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
+      )}
+
       <section className="admin-table-card">
         <div className="table-toolbar">
-          <h3>Chi tiết đánh giá từng sản phẩm</h3>
-        </div>
-        <div className="table-responsive">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Video tương tác</th>
-                <th>Truyện / Sách tương tác</th>
-                <th>Trò chơi tương tác</th>
-                <th>Sơ đồ / Mô phỏng</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>{productAverages.prod_video.count > 0 ? (productAverages.prod_video.sum / productAverages.prod_video.count).toFixed(2) : '—'} / 5.0</td>
-                <td>{productAverages.prod_comic.count > 0 ? (productAverages.prod_comic.sum / productAverages.prod_comic.count).toFixed(2) : '—'} / 5.0</td>
-                <td>{productAverages.prod_game.count > 0 ? (productAverages.prod_game.sum / productAverages.prod_game.count).toFixed(2) : '—'} / 5.0</td>
-                <td>{productAverages.prod_simulation.count > 0 ? (productAverages.prod_simulation.sum / productAverages.prod_simulation.count).toFixed(2) : '—'} / 5.0</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <section className="admin-table-card" style={{ marginTop: 30 }}>
-        <div className="table-toolbar">
-          <h3>Danh sách phiếu đã gửi</h3>
+          <h3>Danh sách phiếu khảo sát chi tiết</h3>
           <span>{total} kết quả</span>
         </div>
         <div className="table-responsive">
@@ -470,7 +559,7 @@ export function AdminSurveyPage() {
                 <th>Email</th>
                 <th>Lớp</th>
                 <th>Ngày gửi</th>
-                <th>Góp ý</th>
+                <th>Ý kiến đóng góp</th>
               </tr>
             </thead>
             <tbody>
@@ -481,7 +570,7 @@ export function AdminSurveyPage() {
                   <td>{s.schoolClass || '—'} ({s.gender || '—'})</td>
                   <td>{dateTimeLabel(s.createdAt)}</td>
                   <td style={{ maxWidth: 300, whiteSpace: 'normal' }}>
-                    {s.feedback || <em className="muted">Không có</em>}
+                    {s.feedback ? <span style={{ background: '#f8fafc', padding: '6px 10px', borderRadius: '8px', display: 'inline-block', fontSize: '13px' }}>{s.feedback}</span> : <em className="muted">Không có</em>}
                   </td>
                 </tr>
               ))}
