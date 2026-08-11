@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, CheckCircle2, KeyRound, LoaderCircle, LockKeyhole, Mail, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowRight, CheckCircle2, KeyRound, LoaderCircle, LockKeyhole, Mail, School, ShieldCheck, UserRound } from 'lucide-react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -75,7 +75,7 @@ export function LoginPage() {
 
 export function RegisterPage() {
   const [role, setRole] = useState('STUDENT');
-  const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
+  const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '', school: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -92,7 +92,7 @@ export function RegisterPage() {
     try {
       const payload = await apiRequest('/auth/register', {
         method: 'POST',
-        body: { fullName: form.fullName, email: form.email, password: form.password, role }
+        body: { fullName: form.fullName, email: form.email, password: form.password, role, school: form.school.trim() || undefined }
       });
       setSuccess(payload.data);
     } catch (requestError) {
@@ -156,6 +156,19 @@ export function RegisterPage() {
       <form onSubmit={submit} className="stack-form">
         <label>Họ và tên<span className="input-with-icon"><UserRound size={18} /><input value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required minLength={2} /></span></label>
         <label>Email<span className="input-with-icon"><Mail size={18} /><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required /></span></label>
+        <label>
+          {role === 'TEACHER' ? 'Trường đang dạy' : 'Trường học'}
+          <span className="input-with-icon">
+            <School size={18} />
+            <input
+              value={form.school}
+              onChange={(event) => setForm({ ...form, school: event.target.value })}
+              placeholder={role === 'TEACHER' ? 'Ví dụ: THPT Lương Ngọc Quyến' : 'Ví dụ: THCS Hoàng Văn Thụ'}
+              maxLength={120}
+            />
+          </span>
+          <small>Không bắt buộc, giúp thống kê theo trường.</small>
+        </label>
         <label>Mật khẩu<span className="input-with-icon"><LockKeyhole size={18} /><input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required minLength={10} /></span><small>Tối thiểu 10 ký tự.</small></label>
         <label>Xác nhận mật khẩu<span className="input-with-icon"><LockKeyhole size={18} /><input type="password" value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} required /></span></label>
         {error && <div className="form-error">{error}</div>}
