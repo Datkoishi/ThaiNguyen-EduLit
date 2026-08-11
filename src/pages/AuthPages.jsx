@@ -74,6 +74,7 @@ export function LoginPage() {
 }
 
 export function RegisterPage() {
+  const [role, setRole] = useState('STUDENT');
   const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(null);
@@ -91,7 +92,7 @@ export function RegisterPage() {
     try {
       const payload = await apiRequest('/auth/register', {
         method: 'POST',
-        body: { fullName: form.fullName, email: form.email, password: form.password }
+        body: { fullName: form.fullName, email: form.email, password: form.password, role }
       });
       setSuccess(payload.data);
     } catch (requestError) {
@@ -127,16 +128,46 @@ export function RegisterPage() {
 
   return (
     <section className="auth-card">
-      <span className="auth-kicker">Tạo tài khoản Học sinh</span>
+      <span className="auth-kicker">Tạo tài khoản</span>
       <h1>Bắt đầu hành trình học tập</h1>
-      <p>Tài khoản Giáo viên được Admin xác minh và cấp quyền sau.</p>
+      <p>Chọn loại tài khoản phù hợp với bạn.</p>
+
+      <div className="role-selector">
+        <button
+          type="button"
+          className={'role-option' + (role === 'STUDENT' ? ' is-selected' : '')}
+          onClick={() => setRole('STUDENT')}
+        >
+          <UserRound size={24} />
+          <span>Học sinh</span>
+          <small>Khám phá học liệu và theo dõi tiến độ học tập.</small>
+        </button>
+        <button
+          type="button"
+          className={'role-option' + (role === 'TEACHER' ? ' is-selected' : '')}
+          onClick={() => setRole('TEACHER')}
+        >
+          <ShieldCheck size={24} />
+          <span>Giáo viên</span>
+          <small>Tạo và quản lý học liệu, chờ Admin xét duyệt.</small>
+        </button>
+      </div>
+
+      {role === 'TEACHER' && (
+        <div className="role-notice">
+          <ShieldCheck size={16} /> Tài khoản Giáo viên sẽ được Admin xét duyệt trước khi kích hoạt đầy đủ quyền.
+        </div>
+      )}
+
       <form onSubmit={submit} className="stack-form">
         <label>Họ và tên<span className="input-with-icon"><UserRound size={18} /><input value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} required minLength={2} /></span></label>
         <label>Email<span className="input-with-icon"><Mail size={18} /><input type="email" value={form.email} onChange={(event) => setForm({ ...form, email: event.target.value })} required /></span></label>
         <label>Mật khẩu<span className="input-with-icon"><LockKeyhole size={18} /><input type="password" value={form.password} onChange={(event) => setForm({ ...form, password: event.target.value })} required minLength={10} /></span><small>Tối thiểu 10 ký tự.</small></label>
         <label>Xác nhận mật khẩu<span className="input-with-icon"><LockKeyhole size={18} /><input type="password" value={form.confirmPassword} onChange={(event) => setForm({ ...form, confirmPassword: event.target.value })} required /></span></label>
         {error && <div className="form-error">{error}</div>}
-        <button className="button button-primary button-block" disabled={submitting}>{submitting ? <LoaderCircle className="spin" size={18} /> : <ArrowRight size={18} />} Đăng ký</button>
+        <button className="button button-primary button-block" disabled={submitting}>
+          {submitting ? <LoaderCircle className="spin" size={18} /> : <ArrowRight size={18} />} Đăng ký {role === 'TEACHER' ? 'Giáo viên' : 'Học sinh'}
+        </button>
       </form>
       <div className="auth-footer">Đã có tài khoản? <Link to="/dang-nhap">Đăng nhập</Link></div>
     </section>
