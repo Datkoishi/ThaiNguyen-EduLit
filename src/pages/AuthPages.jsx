@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ArrowRight, CheckCircle2, KeyRound, LoaderCircle, LockKeyhole, Mail, School, ShieldCheck, UserRound } from 'lucide-react';
+import { ArrowRight, KeyRound, LoaderCircle, LockKeyhole, Mail, School, ShieldCheck, UserRound } from 'lucide-react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { apiRequest } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -77,7 +77,6 @@ export function RegisterPage() {
   const [role, setRole] = useState('STUDENT');
   const [form, setForm] = useState({ fullName: '', email: '', password: '', confirmPassword: '', school: '' });
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
 
@@ -90,41 +89,17 @@ export function RegisterPage() {
     }
     setSubmitting(true);
     try {
-      const payload = await apiRequest('/auth/register', {
+      await apiRequest('/auth/register', {
         method: 'POST',
         body: { fullName: form.fullName, email: form.email, password: form.password, role, school: form.school.trim() || undefined }
       });
-      setSuccess(payload.data);
+      navigate('/dang-nhap', { state: { message: 'Đăng ký thành công! Hãy đăng nhập để bắt đầu.' } });
     } catch (requestError) {
       setError(requestError.message);
     } finally {
       setSubmitting(false);
     }
   };
-
-  const verifyDemo = async () => {
-    setSubmitting(true);
-    try {
-      await apiRequest('/auth/verify-email', { method: 'POST', body: { token: success.demoVerificationToken } });
-      navigate('/dang-nhap', { state: { message: 'Xác thực thành công.' } });
-    } catch (requestError) {
-      setError(requestError.message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  if (success) {
-    return (
-      <section className="auth-card auth-success">
-        <span className="success-orb"><CheckCircle2 size={34} /></span>
-        <h1>Kiểm tra email của bạn</h1>
-        <p>{success.message}</p>
-        {success.demoVerificationToken && <button className="button button-primary button-block" onClick={verifyDemo} disabled={submitting}>Xác thực tài khoản demo</button>}
-        <Link className="button button-secondary button-block" to="/dang-nhap">Về trang đăng nhập</Link>
-      </section>
-    );
-  }
 
   return (
     <section className="auth-card">
