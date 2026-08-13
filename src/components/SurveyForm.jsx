@@ -4,38 +4,14 @@ import { apiRequest } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 const surveyQuestions = [
-  { id: 'q1', text: 'Nội dung học liệu chính xác và dễ hiểu.', section: 'I. CHẤT LƯỢNG NỘI DUNG CỦA HỌC LIỆU SỐ' },
-  { id: 'q2', text: 'Nội dung phù hợp với bài học trong tài liệu GDĐP lớp 6.', section: 'I. CHẤT LƯỢNG NỘI DUNG CỦA HỌC LIỆU SỐ' },
-  { id: 'q3', text: 'Kiến thức được trình bày logic, khoa học.', section: 'I. CHẤT LƯỢNG NỘI DUNG CỦA HỌC LIỆU SỐ' },
-  { id: 'q4', text: 'Học liệu giúp em hiểu rõ hơn về văn học dân gian Thái Nguyên.', section: 'I. CHẤT LƯỢNG NỘI DUNG CỦA HỌC LIỆU SỐ' },
-  { id: 'q5', text: 'Nội dung học liệu phù hợp với khả năng của em.', section: 'I. CHẤT LƯỢNG NỘI DUNG CỦA HỌC LIỆU SỐ' },
-
-  { id: 'q6', text: 'Các hoạt động học tập được sắp xếp hợp lí.', section: 'II. THIẾT KẾ SƯ PHẠM' },
-  { id: 'q7', text: 'Em dễ dàng theo dõi tiến trình bài học.', section: 'II. THIẾT KẾ SƯ PHẠM' },
-  { id: 'q8', text: 'Các nhiệm vụ học tập rõ ràng.', section: 'II. THIẾT KẾ SƯ PHẠM' },
-  { id: 'q9', text: 'Học liệu tạo điều kiện để em chủ động học tập.', section: 'II. THIẾT KẾ SƯ PHẠM' },
-
-  { id: 'q11', text: 'Giao diện học liệu đẹp và hấp dẫn.', section: 'III. GIAO DIỆN VÀ KHẢ NĂNG SỬ DỤNG' },
-  { id: 'q12', text: 'Các chức năng dễ sử dụng.', section: 'III. GIAO DIỆN VÀ KHẢ NĂNG SỬ DỤNG' },
-  { id: 'q13', text: 'Em dễ dàng tìm được nội dung cần học.', section: 'III. GIAO DIỆN VÀ KHẢ NĂNG SỬ DỤNG' },
-  { id: 'q14', text: 'Học liệu hoạt động ổn định khi sử dụng.', section: 'III. GIAO DIỆN VÀ KHẢ NĂNG SỬ DỤNG' },
-  { id: 'q15', text: 'Em có thể sử dụng học liệu trên nhiều thiết bị.', section: 'III. GIAO DIỆN VÀ KHẢ NĂNG SỬ DỤNG' },
-
-  { id: 'q21', text: 'Em được tham gia nhiều hoạt động học tập.', section: 'IV. TÍNH TƯƠNG TÁC' },
-  { id: 'q22', text: 'Trò chơi giúp em ôn luyện kiến thức hiệu quả.', section: 'IV. TÍNH TƯƠNG TÁC' },
-  { id: 'q23', text: 'Chatbot AI hỗ trợ em khi gặp khó khăn.', section: 'IV. TÍNH TƯƠNG TÁC' },
-  { id: 'q24', text: 'Em nhận được phản hồi sau khi làm bài tập.', section: 'IV. TÍNH TƯƠNG TÁC' },
-
-  { id: 'q26', text: 'Học liệu giúp em ghi nhớ kiến thức lâu hơn.', section: 'V. HIỆU QUẢ HỌC TẬP' },
-  { id: 'q27', text: 'Em hiểu rõ hơn nội dung các truyện dân gian.', section: 'V. HIỆU QUẢ HỌC TẬP' },
-  { id: 'q28', text: 'Em biết thêm nhiều kiến thức về văn hóa Thái Nguyên.', section: 'V. HIỆU QUẢ HỌC TẬP' },
-  { id: 'q29', text: 'Em dễ dàng hoàn thành các bài tập sau bài học.', section: 'V. HIỆU QUẢ HỌC TẬP' },
-  { id: 'q30', text: 'Kết quả học tập của em được cải thiện khi sử dụng học liệu.', section: 'V. HIỆU QUẢ HỌC TẬP' },
-
-  { id: 'q36', text: 'Em cảm thấy hứng thú khi học bằng học liệu số.', section: 'VI. MỨC ĐỘ HỨNG THÚ' },
-  { id: 'q37', text: 'Em mong muốn tiếp tục học bằng các học liệu số.', section: 'VI. MỨC ĐỘ HỨNG THÚ' },
-  { id: 'q38', text: 'Học liệu giúp việc học văn học dân gian trở nên thú vị hơn.', section: 'VI. MỨC ĐỘ HỨNG THÚ' },
+  { id: 'q1', text: 'Nội dung học liệu chính xác, dễ hiểu và phù hợp với lớp 6.', section: 'I. CHẤT LƯỢNG NỘI DUNG' },
+  { id: 'q2', text: 'Các hoạt động học tập được sắp xếp hợp lí, rõ ràng.', section: 'II. THIẾT KẾ SƯ PHẠM' },
+  { id: 'q3', text: 'Giao diện đẹp, dễ sử dụng trên nhiều thiết bị.', section: 'III. GIAO DIỆN & SỬ DỤNG' },
+  { id: 'q4', text: 'Tương tác (trò chơi, AI) giúp em ôn luyện hiệu quả.', section: 'IV. TÍNH TƯƠNG TÁC' },
+  { id: 'q5', text: 'Học liệu giúp em hiểu rõ về văn hóa Thái Nguyên.', section: 'V. HIỆU QUẢ HỌC TẬP' },
+  { id: 'q6', text: 'Em cảm thấy hứng thú và muốn tiếp tục học.', section: 'VI. MỨC ĐỘ HỨNG THÚ' },
 ];
+
 
 const productEvaluations = [
   { id: 'prod_video', text: 'Video tương tác' },

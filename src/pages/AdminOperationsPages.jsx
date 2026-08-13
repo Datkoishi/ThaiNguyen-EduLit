@@ -381,22 +381,22 @@ export function AdminSurveyPage() {
   
   const genderDataMap = { 'Nam': 0, 'Nữ': 0, 'Khác': 0 };
   
-  const sectionScores = {
-    'Nội dung': { sum: 0, count: 0 },
-    'Sư phạm': { sum: 0, count: 0 },
-    'Giao diện': { sum: 0, count: 0 },
-    'Tương tác': { sum: 0, count: 0 },
-    'Hiệu quả': { sum: 0, count: 0 },
-    'Hứng thú': { sum: 0, count: 0 }
-  };
+  const questionStats = [
+    { id: 'q1', text: 'Q1. Chất lượng nội dung', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    { id: 'q2', text: 'Q2. Thiết kế sư phạm', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    { id: 'q3', text: 'Q3. Giao diện & Sử dụng', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    { id: 'q4', text: 'Q4. Tính tương tác', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    { id: 'q5', text: 'Q5. Hiệu quả học tập', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    { id: 'q6', text: 'Q6. Mức độ hứng thú', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
+  ];
 
   const qMap = {
-    q1: 'Nội dung', q2: 'Nội dung', q3: 'Nội dung', q4: 'Nội dung', q5: 'Nội dung',
-    q6: 'Sư phạm', q7: 'Sư phạm', q8: 'Sư phạm', q9: 'Sư phạm',
-    q11: 'Giao diện', q12: 'Giao diện', q13: 'Giao diện', q14: 'Giao diện', q15: 'Giao diện',
-    q21: 'Tương tác', q22: 'Tương tác', q23: 'Tương tác', q24: 'Tương tác',
-    q26: 'Hiệu quả', q27: 'Hiệu quả', q28: 'Hiệu quả', q29: 'Hiệu quả', q30: 'Hiệu quả',
-    q36: 'Hứng thú', q37: 'Hứng thú', q38: 'Hứng thú'
+    q1: 'q1', q2: 'q1', q3: 'q1', q4: 'q1', q5: 'q1',
+    q6: 'q2', q7: 'q2', q8: 'q2', q9: 'q2',
+    q11: 'q3', q12: 'q3', q13: 'q3', q14: 'q3', q15: 'q3',
+    q21: 'q4', q22: 'q4', q23: 'q4', q24: 'q4',
+    q26: 'q5', q27: 'q5', q28: 'q5', q29: 'q5', q30: 'q5',
+    q36: 'q6', q37: 'q6', q38: 'q6'
   };
   
   const productAverages = {
@@ -416,10 +416,11 @@ export function AdminSurveyPage() {
     Object.keys(r).forEach(k => {
       overallSum += Number(r[k]);
       qCount++;
-      const section = qMap[k];
-      if (section) {
-        sectionScores[section].sum += Number(r[k]);
-        sectionScores[section].count++;
+      const targetQ = qMap[k] || k;
+      const qObj = questionStats.find(q => q.id === targetQ);
+      if (qObj) {
+        qObj[r[k]] = (qObj[r[k]] || 0) + 1;
+        qObj.total++;
       }
     });
     
@@ -439,10 +440,19 @@ export function AdminSurveyPage() {
     .filter(k => genderDataMap[k] > 0)
     .map(k => ({ name: k, value: genderDataMap[k] }));
 
-  const sectionBarData = Object.keys(sectionScores).map(k => ({
-    name: k,
-    'Điểm TB': sectionScores[k].count > 0 ? Number((sectionScores[k].sum / sectionScores[k].count).toFixed(2)) : 0
-  }));
+  const questionBarData = questionStats.map(q => {
+    if (q.total === 0) return { name: q.text, 'Mức 1': 0, 'Mức 2': 0, 'Mức 3': 0, 'Mức 4': 0, 'Mức 5': 0, raw1: 0, raw2: 0, raw3: 0, raw4: 0, raw5: 0, avg: 0 };
+    return {
+      name: q.text,
+      'Mức 1': Number(((q[1] / q.total) * 100).toFixed(1)),
+      'Mức 2': Number(((q[2] / q.total) * 100).toFixed(1)),
+      'Mức 3': Number(((q[3] / q.total) * 100).toFixed(1)),
+      'Mức 4': Number(((q[4] / q.total) * 100).toFixed(1)),
+      'Mức 5': Number(((q[5] / q.total) * 100).toFixed(1)),
+      raw1: q[1], raw2: q[2], raw3: q[3], raw4: q[4], raw5: q[5],
+      avg: Number(((q[1]*1 + q[2]*2 + q[3]*3 + q[4]*4 + q[5]*5) / q.total).toFixed(2))
+    };
+  });
 
   const productBarData = [
     { name: 'Video', 'Điểm TB': productAverages.prod_video.count > 0 ? Number((productAverages.prod_video.sum / productAverages.prod_video.count).toFixed(2)) : 0 },
@@ -497,53 +507,68 @@ export function AdminSurveyPage() {
       </div>
 
       {total > 0 && (
-        <div className="charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '30px', marginBottom: '30px' }}>
-          
-          <div className="admin-table-card" style={{ padding: '20px' }}>
-            <h3 style={{ marginBottom: '20px', fontSize: '16px' }}>Tỉ lệ giới tính</h3>
-            <div style={{ height: 250 }}>
-              <ResponsiveContainer width="100%" height="100%">
+        <section className="survey-charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', marginTop: '24px' }}>
+        
+        <div className="admin-table-card" style={{ padding: '24px' }}>
+          <h3 style={{ marginBottom: '24px', fontSize: '16px' }}>Chi tiết đánh giá từng câu hỏi (%)</h3>
+          <div style={{ width: '100%', height: 400 }}>
+            <ResponsiveContainer>
+              <BarChart data={questionBarData} layout="vertical" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                <XAxis type="number" domain={[0, 100]} />
+                <YAxis type="category" dataKey="name" width={180} tick={{fontSize: 12}} />
+                <Tooltip formatter={(value, name, props) => {
+                  if (name.includes('Mức')) {
+                    const level = name.replace('Mức ', '');
+                    const raw = props.payload['raw' + level];
+                    return [`${value}% (${raw} lượt)`, name];
+                  }
+                  return [value, name];
+                }} />
+                <Legend />
+                <Bar dataKey="Mức 1" stackId="a" fill="#ef4444" radius={[4, 0, 0, 4]} />
+                <Bar dataKey="Mức 2" stackId="a" fill="#f97316" />
+                <Bar dataKey="Mức 3" stackId="a" fill="#eab308" />
+                <Bar dataKey="Mức 4" stackId="a" fill="#3b82f6" />
+                <Bar dataKey="Mức 5" stackId="a" fill="#22c55e" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div className="admin-table-card" style={{ padding: '24px' }}>
+            <h3 style={{ marginBottom: '24px', fontSize: '16px', textAlign: 'center' }}>Thống kê Giới tính</h3>
+            <div style={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer>
                 <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
-                    {pieData.map((entry, index) => <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />)}
+                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`} dataKey="value">
+                    {pieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                    ))}
                   </Pie>
-                  <RechartsTooltip content={<CustomTooltip />} />
-                  <Legend verticalAlign="bottom" height={36} />
+                  <Tooltip formatter={(value) => [`${value} học sinh`, 'Số lượng']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
 
-          <div className="admin-table-card" style={{ padding: '20px' }}>
-            <h3 style={{ marginBottom: '20px', fontSize: '16px' }}>Điểm trung bình theo tiêu chí</h3>
-            <div style={{ height: 250 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={sectionBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+          <div className="admin-table-card" style={{ padding: '24px' }}>
+            <h3 style={{ marginBottom: '24px', fontSize: '16px', textAlign: 'center' }}>Điểm trung bình theo loại học liệu</h3>
+            <div style={{ width: '100%', height: 300 }}>
+              <ResponsiveContainer>
+                <BarChart data={productBarData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 5]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(108, 58, 187, 0.05)' }} />
-                  <Bar dataKey="Điểm TB" fill="var(--primary)" radius={[4, 4, 0, 0]} barSize={40} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-          
-          <div className="admin-table-card" style={{ padding: '20px', gridColumn: '1 / -1' }}>
-            <h3 style={{ marginBottom: '20px', fontSize: '16px' }}>Đánh giá mức độ hữu ích của Sản phẩm</h3>
-            <div style={{ height: 300 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={productBarData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" tick={{ fontSize: 13 }} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0, 5]} tick={{ fontSize: 12 }} axisLine={false} tickLine={false} />
-                  <RechartsTooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(16, 185, 129, 0.05)' }} />
-                  <Bar dataKey="Điểm TB" fill="#10b981" radius={[4, 4, 0, 0]} barSize={50} />
+                  <XAxis dataKey="name" />
+                  <YAxis domain={[0, 5]} />
+                  <Tooltip formatter={(value) => [`${value} / 5 điểm`, 'Điểm TB']} />
+                  <Bar dataKey="Điểm TB" fill="#10b981" radius={[6, 6, 0, 0]} barSize={50} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         </div>
+      </section>
       )}
 
       <section className="admin-table-card">
