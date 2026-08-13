@@ -17,12 +17,15 @@ import {
   ShieldCheck,
   UserCheck,
   UserRound,
-  Users
+  Users,
+  Settings2,
+  Trash2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../api.js';
 import { ErrorState, PageLoader } from '../components/Common.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
+import AdminSurveyConfigDrawer from '../components/AdminSurveyConfigDrawer.jsx';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -358,17 +361,42 @@ export function AdminSurveyPage() {
   const [surveys, setSurveys] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [configOpen, setConfigOpen] = useState(false);
+  const [adminQuestions, setAdminQuestions] = useState([]);
 
   const load = async () => {
     setLoading(true);
     setError('');
     try {
-      const payload = await apiRequest('/admin/surveys', { token });
-      setSurveys(payload.data || []);
+      const [surveyPayload, questionPayload] = await Promise.all([
+        apiRequest('/admin/surveys', { token }),
+        apiRequest('/admin/survey-questions', { token })
+      ]);
+      setSurveys(surveyPayload.data || []);
+      setAdminQuestions(questionPayload.data || []);
     } catch (requestError) {
       setError(requestError.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const reloadQuestions = async () => {
+    try {
+      const qPayload = await apiRequest('/admin/survey-questions', { token });
+      setAdminQuestions(qPayload.data || []);
+    } catch {
+      // keep current questions on soft refresh failure
+    }
+  };
+
+  const deleteSurvey = async (id) => {
+    if (!window.confirm('Xoá phiếu khảo sát này?')) return;
+    try {
+      await apiRequest('/admin/surveys/' + id, { method: 'DELETE', token });
+      setSurveys(prev => prev.filter(s => s.id !== id));
+    } catch (err) {
+      setError(err.message || 'Không xoá được phiếu.');
     }
   };
 
@@ -378,27 +406,20 @@ export function AdminSurveyPage() {
   const total = surveys.length;
   let overallSum = 0;
   let qCount = 0;
-  
-  const genderDataMap = { 'Nam': 0, 'Nữ': 0, 'Khác': 0 };
-  
-  const questionStats = [
-    { id: 'q1', text: 'Q1. Chất lượng nội dung', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-    { id: 'q2', text: 'Q2. Thiết kế sư phạm', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-    { id: 'q3', text: 'Q3. Giao diện & Sử dụng', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-    { id: 'q4', text: 'Q4. Tính tương tác', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-    { id: 'q5', text: 'Q5. Hiệu quả học tập', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
-    { id: 'q6', text: 'Q6. Mức độ hứng thú', total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 }
-  ];
 
-  const qMap = {
-    q1: 'q1', q2: 'q1', q3: 'q1', q4: 'q1', q5: 'q1',
-    q6: 'q2', q7: 'q2', q8: 'q2', q9: 'q2',
-    q11: 'q3', q12: 'q3', q13: 'q3', q14: 'q3', q15: 'q3',
-    q21: 'q4', q22: 'q4', q23: 'q4', q24: 'q4',
-    q26: 'q5', q27: 'q5', q28: 'q5', q29: 'q5', q30: 'q5',
-    q36: 'q6', q37: 'q6', q38: 'q6'
-  };
-  
+  const genderDataMap = { 'Nam': 0, 'Nữ': 0, 'Khác': 0 };
+
+  const dynamicQuestionStats = {};
+  adminQuestions.forEach(q => {
+    if (q.type === 'RATING_1_5') {
+      dynamicQuestionStats[q.id] = { id: q.id, text: q.text, type: q.type, total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    } else if (q.type === 'SINGLE_CHOICE') {
+      dynamicQuestionStats[q.id] = { id: q.id, text: q.text, type: q.type, total: 0, answers: {} };
+    } else {
+      dynamicQuestionStats[q.id] = { id: q.id, text: q.text, type: q.type, total: 0, answers: [] };
+    }
+  });
+
   const productAverages = {
     prod_video: { sum: 0, count: 0 },
     prod_comic: { sum: 0, count: 0 },
@@ -414,16 +435,23 @@ export function AdminSurveyPage() {
 
     const r = s.ratings || {};
     Object.keys(r).forEach(k => {
-      overallSum += Number(r[k]);
-      qCount++;
-      const targetQ = qMap[k] || k;
-      const qObj = questionStats.find(q => q.id === targetQ);
-      if (qObj) {
-        qObj[r[k]] = (qObj[r[k]] || 0) + 1;
-        qObj.total++;
+      const qObj = dynamicQuestionStats[k];
+      if (!qObj) return;
+
+      if (qObj.type === 'RATING_1_5') {
+        const score = Number(r[k]);
+        if (!Number.isFinite(score)) return;
+        overallSum += score;
+        qCount++;
+        qObj[score] = (qObj[score] || 0) + 1;
+      } else if (qObj.type === 'SINGLE_CHOICE') {
+        qObj.answers[r[k]] = (qObj.answers[r[k]] || 0) + 1;
+      } else if (r[k]) {
+        qObj.answers.push(r[k]);
       }
+      qObj.total++;
     });
-    
+
     const pr = s.productRatings || {};
     Object.keys(pr).forEach(k => {
       if (productAverages[k] !== undefined) {
@@ -435,12 +463,11 @@ export function AdminSurveyPage() {
 
   const overallAvg = qCount > 0 ? (overallSum / qCount).toFixed(2) : 0;
 
-  // Chart Data
   const pieData = Object.keys(genderDataMap)
     .filter(k => genderDataMap[k] > 0)
     .map(k => ({ name: k, value: genderDataMap[k] }));
 
-  const questionBarData = questionStats.map(q => {
+  const questionBarData = Object.values(dynamicQuestionStats).filter(q => q.type === 'RATING_1_5').map(q => {
     if (q.total === 0) return { name: q.text, 'Mức 1': 0, 'Mức 2': 0, 'Mức 3': 0, 'Mức 4': 0, 'Mức 5': 0, raw1: 0, raw2: 0, raw3: 0, raw4: 0, raw5: 0, avg: 0 };
     return {
       name: q.text,
@@ -463,18 +490,6 @@ export function AdminSurveyPage() {
 
   const PIE_COLORS = ['#3b82f6', '#ec4899', '#8b5cf6'];
 
-  const CustomTooltip = ({ active, payload, label }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div style={{ background: '#fff', border: '1px solid #e2e8f0', padding: '10px 15px', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-          <p style={{ margin: '0 0 5px', fontWeight: 'bold' }}>{label || payload[0].name}</p>
-          <p style={{ margin: 0, color: payload[0].color || 'var(--primary)' }}>{payload[0].name}: {payload[0].value}</p>
-        </div>
-      );
-    }
-    return null;
-  };
-
   if (loading) return <PageLoader label="Đang tải dữ liệu khảo sát..." />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
@@ -486,7 +501,10 @@ export function AdminSurveyPage() {
           <h1>Kết quả khảo sát</h1>
           <p>Thống kê chi tiết đánh giá từ học sinh qua các biểu đồ phân tích.</p>
         </div>
-        <button className="button button-secondary" onClick={load}><RotateCcw size={17} /> Làm mới</button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button className="button button-primary" onClick={() => setConfigOpen(true)}><Settings2 size={17} /> Cấu hình câu hỏi</button>
+          <button className="button button-secondary" onClick={load}><RotateCcw size={17} /> Làm mới</button>
+        </div>
       </header>
       
       <div className="dashboard-grid" style={{ marginBottom: 30 }}>
@@ -517,7 +535,7 @@ export function AdminSurveyPage() {
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                 <XAxis type="number" domain={[0, 100]} />
                 <YAxis type="category" dataKey="name" width={180} tick={{fontSize: 12}} />
-                <Tooltip formatter={(value, name, props) => {
+                <RechartsTooltip formatter={(value, name, props) => {
                   if (name.includes('Mức')) {
                     const level = name.replace('Mức ', '');
                     const raw = props.payload['raw' + level];
@@ -547,7 +565,7 @@ export function AdminSurveyPage() {
                       <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value) => [`${value} học sinh`, 'Số lượng']} />
+                  <RechartsTooltip formatter={(value) => [`${value} học sinh`, 'Số lượng']} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -561,7 +579,7 @@ export function AdminSurveyPage() {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
                   <XAxis dataKey="name" />
                   <YAxis domain={[0, 5]} />
-                  <Tooltip formatter={(value) => [`${value} / 5 điểm`, 'Điểm TB']} />
+                  <RechartsTooltip formatter={(value) => [`${value} / 5 điểm`, 'Điểm TB']} />
                   <Bar dataKey="Điểm TB" fill="#10b981" radius={[6, 6, 0, 0]} barSize={50} />
                 </BarChart>
               </ResponsiveContainer>
@@ -585,6 +603,7 @@ export function AdminSurveyPage() {
                 <th>Lớp</th>
                 <th>Ngày gửi</th>
                 <th>Ý kiến đóng góp</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -597,17 +616,28 @@ export function AdminSurveyPage() {
                   <td style={{ maxWidth: 300, whiteSpace: 'normal' }}>
                     {s.feedback ? <span style={{ background: '#f8fafc', padding: '6px 10px', borderRadius: '8px', display: 'inline-block', fontSize: '13px' }}>{s.feedback}</span> : <em className="muted">Không có</em>}
                   </td>
+                  <td>
+                    <button type="button" className="icon-button" onClick={() => deleteSurvey(s.id)} aria-label="Xoá phiếu">
+                      <Trash2 size={17} />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {surveys.length === 0 && (
                 <tr>
-                  <td colSpan="5" className="empty-cell">Chưa có khảo sát nào được gửi.</td>
+                  <td colSpan="6" className="empty-cell">Chưa có khảo sát nào được gửi.</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
       </section>
+
+      <AdminSurveyConfigDrawer
+        open={configOpen}
+        onClose={() => setConfigOpen(false)}
+        onChanged={reloadQuestions}
+      />
     </div>
   );
 }

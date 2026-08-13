@@ -1,22 +1,47 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ClipboardList, X } from 'lucide-react';
 import SurveyForm from './SurveyForm.jsx';
+import { apiRequest } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function SurveyWidget() {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [forceUpdate, setForceUpdate] = useState(0);
+  const [checking, setChecking] = useState(true);
+  const [alreadyDone, setAlreadyDone] = useState(false);
 
-  if (!user || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) return null;
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      if (!user || !token || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) {
+        if (!cancelled) {
+          setAlreadyDone(true);
+          setChecking(false);
+        }
+        return;
+      }
+      setChecking(true);
+      try {
+        const res = await apiRequest('/surveys/me', { token });
+        if (!cancelled) setAlreadyDone(Boolean(res.data));
+      } catch {
+        // Fallback: nếu API lỗi, vẫn cho hiện widget (user có thể bị 409 khi submit)
+        if (!cancelled) setAlreadyDone(false);
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, [user, token]);
 
-  const isDone = localStorage.getItem(`survey_done_${user.id}`);
-  if (isDone) return null;
+  if (checking || alreadyDone || !user || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) {
+    return null;
+  }
 
   const handleSuccess = () => {
-    localStorage.setItem(`survey_done_${user.id}`, 'true');
+    setAlreadyDone(true);
     setIsOpen(false);
-    setForceUpdate(v => v + 1); // trigger re-render to hide
   };
 
   return (
@@ -29,16 +54,17 @@ export default function SurveyWidget() {
           <strong>Đánh giá học liệu</strong>
           <span>Dành 1 phút góp ý để nhận quà nhé!</span>
         </div>
-        <button className="toolbox-button">Bắt đầu</button>
+        <button className="toolbox-button" type="button">Bắt đầu</button>
       </div>
 
       {isOpen && (
         <div className="survey-modal-overlay">
           <div className="survey-modal-content">
-            <button 
-              className="survey-modal-close" 
+            <button
+              className="survey-modal-close"
               onClick={() => setIsOpen(false)}
               aria-label="Đóng khảo sát"
+              type="button"
             >
               <X size={24} />
             </button>

@@ -1,10 +1,37 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ClipboardList, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import SurveyForm from '../components/SurveyForm.jsx';
+import { PageLoader } from '../components/Common.jsx';
+import { apiRequest } from '../api.js';
+import { useAuth } from '../context/AuthContext.jsx';
 
 export default function SurveyPage() {
+  const { token } = useAuth();
   const [success, setSuccess] = useState(false);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    const check = async () => {
+      if (!token) {
+        if (!cancelled) setChecking(false);
+        return;
+      }
+      try {
+        const res = await apiRequest('/surveys/me', { token });
+        if (!cancelled && res.data) setSuccess(true);
+      } catch {
+        // ignore — vẫn cho điền form
+      } finally {
+        if (!cancelled) setChecking(false);
+      }
+    };
+    check();
+    return () => { cancelled = true; };
+  }, [token]);
+
+  if (checking) return <PageLoader label="Đang kiểm tra phiếu khảo sát..." />;
 
   if (success) {
     return (
