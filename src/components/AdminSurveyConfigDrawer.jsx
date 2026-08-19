@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Edit2, Trash2, X, Save, GripVertical } from 'lucide-react';
 import { apiRequest } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-import { SURVEY_AUDIENCE } from '../constants/surveyAudience.js';
+import { SURVEY_AUDIENCE, normalizeSurveyQuestion } from '../constants/surveyAudience.js';
 
 const emptyForm = {
   text: '',
@@ -39,7 +39,7 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
     setError('');
     try {
       const res = await apiRequest('/admin/survey-questions', { token });
-      setQuestions(res.data || []);
+      setQuestions((res.data || []).map(normalizeSurveyQuestion));
     } catch (e) {
       setError(e.message || 'Không tải được danh sách câu hỏi.');
     } finally {

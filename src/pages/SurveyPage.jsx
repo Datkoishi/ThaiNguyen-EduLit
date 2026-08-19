@@ -30,12 +30,7 @@ export default function SurveyPage() {
         const res = await apiRequest(surveysMePath(audience), { token });
         if (!cancelled && res.data) setSuccess(true);
       } catch {
-        try {
-          const res = await apiRequest('/surveys/me', { token });
-          if (!cancelled && res.data) setSuccess(true);
-        } catch {
-          // vẫn cho điền form
-        }
+        // vẫn cho điền form
       } finally {
         if (!cancelled) setChecking(false);
       }

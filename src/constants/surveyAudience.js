@@ -50,12 +50,47 @@ export const SURVEY_COPY = {
   }
 };
 
+export const PRODUCT_EVALUATIONS = [
+  { id: 'prod_video', text: 'Video tương tác' },
+  { id: 'prod_comic', text: 'Truyện tranh số / Sách tương tác' },
+  { id: 'prod_game', text: 'Trò chơi tương tác' },
+  { id: 'prod_simulation', text: 'Sơ đồ / Mô phỏng' }
+];
+
+export function normalizeSurveyQuestion(question = {}) {
+  return {
+    ...question,
+    targetAudience: question.targetAudience || question.target_audience || null,
+    ratingStyle: question.ratingStyle || question.rating_style || 'NUMBER',
+    isActive: question.isActive ?? question.is_active ?? true,
+    required: question.required !== false
+  };
+}
+
 export function filterQuestionsByAudience(questions, audience) {
-  return (questions || []).filter(
-    (q) => !q.targetAudience || q.targetAudience === audience
-  );
+  return (questions || [])
+    .map(normalizeSurveyQuestion)
+    .filter((q) => q.isActive !== false)
+    .filter((q) => !q.targetAudience || q.targetAudience === audience);
 }
 
 export function surveysMePath(audience) {
-  return '/surveys/me?audience=' + audience;
+  return '/surveys/me?audience=' + encodeURIComponent(audience);
+}
+
+export function buildSurveyRatings(questions, ratings = {}) {
+  const payload = {};
+  questions.forEach((q) => {
+    const value = ratings[q.id];
+    if (q.type === 'TEXT_SHORT') {
+      if (typeof value === 'string' && value.trim()) payload[q.id] = value.trim();
+      return;
+    }
+    if (Array.isArray(value)) {
+      if (value.length) payload[q.id] = value;
+      return;
+    }
+    if (value !== undefined && value !== null && value !== '') payload[q.id] = value;
+  });
+  return payload;
 }

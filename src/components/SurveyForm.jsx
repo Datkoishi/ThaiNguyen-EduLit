@@ -5,7 +5,10 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { PageLoader } from './Common.jsx';
 import {
   EMOJI_RATINGS,
+  PRODUCT_EVALUATIONS,
+  SURVEY_AUDIENCE,
   SURVEY_COPY,
+  buildSurveyRatings,
   filterQuestionsByAudience,
   surveyAudienceFromRole
 } from '../constants/surveyAudience.js';
@@ -19,7 +22,7 @@ export default function SurveyForm({ onSuccess, onAudienceResolved }) {
     schoolClass: '',
     gender: '',
     ratings: {},
-    feedback: ''
+    productRatings: {}
   });
 
   const [loading, setLoading] = useState(false);
@@ -39,17 +42,10 @@ export default function SurveyForm({ onSuccess, onAudienceResolved }) {
       setInitLoading(true);
       setInitError('');
       try {
-        const res = await apiRequest('/survey-questions?audience=' + audience, { token });
-        const filtered = filterQuestionsByAudience(res.data || [], audience);
-        if (!cancelled) setSurveyQuestions(filtered);
-      } catch {
-        try {
-          const res = await apiRequest('/survey-questions', { token });
-          const filtered = filterQuestionsByAudience(res.data || [], audience);
-          if (!cancelled) setSurveyQuestions(filtered);
-        } catch (err) {
-          if (!cancelled) setInitError(err.message || 'Không tải được câu hỏi khảo sát.');
-        }
+        const res = await apiRequest('/survey-questions?audience=' + encodeURIComponent(audience), { token });
+        if (!cancelled) setSurveyQuestions(filterQuestionsByAudience(res.data || [], audience));
+      } catch (err) {
+        if (!cancelled) setInitError(err.message || 'Không tải được câu hỏi khảo sát.');
       } finally {
         if (!cancelled) setInitLoading(false);
       }
@@ -73,8 +69,18 @@ export default function SurveyForm({ onSuccess, onAudienceResolved }) {
 
   const steps = useMemo(() => [
     { type: 'info', title: 'Giới thiệu & thông tin' },
-    ...sections.map((s) => ({ type: 'questions', title: s.title, data: s }))
-  ], [sections]);
+    ...sections.map((s) => ({ type: 'questions', title: s.title, data: s })),
+    ...(audience === SURVEY_AUDIENCE.STUDENT
+      ? [{ type: 'products', title: 'Đánh giá từng sản phẩm' }]
+      : [])
+  ], [sections, audience]);
+
+  const handleProductRatingChange = (pId, value) => {
+    setForm((prev) => ({
+      ...prev,
+      productRatings: { ...prev.productRatings, [pId]: value }
+    }));
+  };
 
   const handleRatingChange = (qId, value) => {
     setForm((prev) => ({
@@ -125,6 +131,13 @@ export default function SurveyForm({ onSuccess, onAudienceResolved }) {
           return false;
         }
       }
+    } else if (step.type === 'products') {
+      for (const p of PRODUCT_EVALUATIONS) {
+        if (!form.productRatings[p.id]) {
+          setError('Vui lòng đánh giá mức độ hữu ích của tất cả sản phẩm.');
+          return false;
+        }
+      }
     }
     setError('');
     return true;
@@ -151,9 +164,8 @@ export default function SurveyForm({ onSuccess, onAudienceResolved }) {
           targetAudience: audience,
           schoolClass: form.schoolClass.trim(),
           gender: copy.showGender ? form.gender : undefined,
-          ratings: form.ratings,
-          productRatings: {},
-          feedback: form.feedback || ''
+          ratings: buildSurveyRatings(surveyQuestions, form.ratings),
+          productRatings: audience === SURVEY_AUDIENCE.STUDENT ? form.productRatings : {}
         }
       });
       if (onSuccess) onSuccess(audience);
@@ -322,6 +334,45 @@ export default function SurveyForm({ onSuccess, onAudienceResolved }) {
                       className="survey-text-answer"
                     />
                   )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {currentStepData.type === 'products' && (
+          <div className="wizard-section survey-products">
+            <p className="section-desc">Đánh giá mức độ hữu ích của từng loại học liệu.</p>
+            <div className="wizard-table-header products-header">
+              <div className="th-content">Loại học liệu</div>
+              <div className="th-ratings products-ratings-labels">
+                <span>Rất không hữu ích</span>
+                <span>Không hữu ích</span>
+                <span>Bình thường</span>
+                <span>Hữu ích</span>
+                <span>Rất hữu ích</span>
+              </div>
+            </div>
+            <div className="wizard-questions-list">
+              {PRODUCT_EVALUATIONS.map((p) => (
+                <div key={p.id} className="survey-question-row">
+                  <div className="question-text">
+                    <span className="q-content">{p.text}</span>
+                  </div>
+                  <div className="question-ratings">
+                    {[1, 2, 3, 4, 5].map((val) => (
+                      <label key={val} className="rating-radio" title={'Mức ' + val}>
+                        <input
+                          type="radio"
+                          name={p.id}
+                          value={val}
+                          checked={form.productRatings[p.id] === val}
+                          onChange={() => handleProductRatingChange(p.id, val)}
+                        />
+                        <span className="radio-custom"></span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>

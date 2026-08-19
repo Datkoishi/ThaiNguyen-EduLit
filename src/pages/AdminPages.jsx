@@ -64,6 +64,7 @@ export function AdminProductsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [actionError, setActionError] = useState('');
   const [deletingId, setDeletingId] = useState(null);
 
   const load = () => {
@@ -83,12 +84,12 @@ export function AdminProductsPage() {
     if (!window.confirm(warn)) return;
 
     setDeletingId(product.id);
-    setError('');
+    setActionError('');
     try {
       await apiRequest('/admin/products/' + product.id, { method: 'DELETE', token });
       setProducts((prev) => prev.filter((item) => item.id !== product.id));
     } catch (requestError) {
-      setError(requestError.message || 'Không xoá được học liệu.');
+      setActionError(requestError.message || 'Không xoá được học liệu.');
     } finally {
       setDeletingId(null);
     }
@@ -107,7 +108,7 @@ export function AdminProductsPage() {
         <div><span className="section-kicker">Nội dung hệ thống</span><h1>Quản lý học liệu</h1><p>{products.length} học liệu trong hệ thống.</p></div>
         <Link className="button button-primary" to="/quan-tri/san-pham/tao-moi"><Plus size={18} /> Tạo học liệu</Link>
       </div>
-      {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
+      {actionError && <div className="form-error" style={{ marginBottom: 16 }}>{actionError}</div>}
       <section className="admin-table-card">
         <div className="table-toolbar"><label className="table-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm tiêu đề, slug, danh mục..." /></label><label className="compact-select">Trạng thái<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">Tất cả</option><option value="DRAFT">Chờ duyệt</option><option value="PUBLISHED">Đã công bố</option><option value="HIDDEN">Đang ẩn</option><option value="ARCHIVED">Lưu trữ</option></select></label><span>{filtered.length} kết quả</span></div>
         <div className="table-responsive">

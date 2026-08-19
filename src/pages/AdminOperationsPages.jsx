@@ -28,7 +28,7 @@ import { apiRequest } from '../api.js';
 import { ErrorState, PageLoader } from '../components/Common.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import AdminSurveyConfigDrawer from '../components/AdminSurveyConfigDrawer.jsx';
-import { SURVEY_AUDIENCE } from '../constants/surveyAudience.js';
+import { SURVEY_AUDIENCE, normalizeSurveyQuestion } from '../constants/surveyAudience.js';
 
 const dateTimeLabel = (value) => value
   ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -403,7 +403,7 @@ export function AdminSurveyPage() {
   const [expandedId, setExpandedId] = useState(null);
   const [audienceFilter, setAudienceFilter] = useState(SURVEY_AUDIENCE.STUDENT);
 
-  const surveyAudienceOf = (survey) => survey.targetAudience || SURVEY_AUDIENCE.STUDENT;
+  const surveyAudienceOf = (survey) => survey.targetAudience || survey.target_audience || SURVEY_AUDIENCE.STUDENT;
   const questionAudienceOf = (question) => question.targetAudience || SURVEY_AUDIENCE.STUDENT;
 
   const load = async () => {
@@ -415,7 +415,7 @@ export function AdminSurveyPage() {
         apiRequest('/admin/survey-questions', { token })
       ]);
       setSurveys(surveyPayload.data || []);
-      setAdminQuestions(questionPayload.data || []);
+      setAdminQuestions((questionPayload.data || []).map(normalizeSurveyQuestion));
     } catch (requestError) {
       setError(requestError.message);
     } finally {
@@ -426,7 +426,7 @@ export function AdminSurveyPage() {
   const reloadQuestions = async () => {
     try {
       const qPayload = await apiRequest('/admin/survey-questions', { token });
-      setAdminQuestions(qPayload.data || []);
+      setAdminQuestions((qPayload.data || []).map(normalizeSurveyQuestion));
     } catch {
       // keep current questions on soft refresh failure
     }
@@ -757,6 +757,7 @@ export function AdminSurveyPage() {
               )}
             </section>
 
+            {audienceFilter === SURVEY_AUDIENCE.STUDENT && (
             <section className="admin-table-card">
               <div className="panel-heading">
                 <div>
@@ -778,6 +779,7 @@ export function AdminSurveyPage() {
                 ))}
               </ul>
             </section>
+            )}
 
             <section className="admin-table-card survey-config-card">
               <div className="panel-heading">
@@ -888,6 +890,7 @@ export function AdminSurveyPage() {
                                   ))}
                                 </ul>
                               </div>
+                              {audienceFilter === SURVEY_AUDIENCE.STUDENT && (
                               <div>
                                 <span className="section-kicker">Sản phẩm</span>
                                 <ul className="survey-detail-ratings">
@@ -899,6 +902,7 @@ export function AdminSurveyPage() {
                                   ))}
                                 </ul>
                               </div>
+                              )}
                             </div>
                           </td>
                         </tr>

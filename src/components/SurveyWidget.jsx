@@ -33,12 +33,7 @@ export default function SurveyWidget() {
         const res = await apiRequest(surveysMePath(audience), { token });
         if (!cancelled) setAlreadyDone(Boolean(res.data));
       } catch {
-        try {
-          const res = await apiRequest('/surveys/me', { token });
-          if (!cancelled) setAlreadyDone(Boolean(res.data));
-        } catch {
-          if (!cancelled) setAlreadyDone(false);
-        }
+        if (!cancelled) setAlreadyDone(false);
       } finally {
         if (!cancelled) setChecking(false);
       }
