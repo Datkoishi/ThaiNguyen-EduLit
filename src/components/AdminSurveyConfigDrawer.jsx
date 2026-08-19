@@ -1,9 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Edit2, Trash2, X, Save, GripVertical } from 'lucide-react';
 import { apiRequest } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import { SURVEY_AUDIENCE } from '../constants/surveyAudience.js';
 
-const emptyForm = { text: '', type: 'RATING_1_5', section: '', isActive: true, options: '' };
+const emptyForm = {
+  text: '',
+  type: 'RATING_1_5',
+  section: '',
+  isActive: true,
+  required: true,
+  ratingStyle: 'NUMBER',
+  options: '',
+  targetAudience: SURVEY_AUDIENCE.STUDENT
+};
+
+const AUDIENCE_LABELS = {
+  [SURVEY_AUDIENCE.STUDENT]: 'Học sinh',
+  [SURVEY_AUDIENCE.TEACHER]: 'Giáo viên'
+};
 
 export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
   const { token } = useAuth();
@@ -13,6 +28,7 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
   const [error, setError] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [audienceTab, setAudienceTab] = useState(SURVEY_AUDIENCE.STUDENT);
 
   useEffect(() => {
     if (open) loadQuestions();
@@ -31,14 +47,21 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
     }
   };
 
+  const filteredQuestions = useMemo(
+    () => questions.filter((q) => (q.targetAudience || SURVEY_AUDIENCE.STUDENT) === audienceTab),
+    [questions, audienceTab]
+  );
+
   const notifyChanged = () => {
     if (onChanged) onChanged();
   };
 
   const resetForm = () => {
     setEditingId(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm, targetAudience: audienceTab });
   };
+
+  const needsOptions = form.type === 'SINGLE_CHOICE' || form.type === 'MULTI_CHOICE';
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -47,13 +70,16 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
       type: form.type,
       section: form.section.trim(),
       isActive: form.isActive,
-      options: form.type === 'SINGLE_CHOICE'
-        ? form.options.split(',').map(s => s.trim()).filter(Boolean)
+      required: form.required,
+      targetAudience: form.targetAudience,
+      ratingStyle: form.type === 'RATING_1_5' ? form.ratingStyle : null,
+      options: needsOptions
+        ? form.options.split(',').map((s) => s.trim()).filter(Boolean)
         : null
     };
 
-    if (payload.type === 'SINGLE_CHOICE' && payload.options.length < 2) {
-      setError('Trắc nghiệm cần ít nhất 2 đáp án (cách nhau bởi dấu phẩy).');
+    if (needsOptions && payload.options.length < 2) {
+      setError('Cần ít nhất 2 đáp án (cách nhau bởi dấu phẩy).');
       return;
     }
 
@@ -110,6 +136,9 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
       type: q.type || 'RATING_1_5',
       section: q.section || '',
       isActive: q.isActive !== false,
+      required: q.required !== false,
+      ratingStyle: q.ratingStyle || 'NUMBER',
+      targetAudience: q.targetAudience || SURVEY_AUDIENCE.STUDENT,
       options: Array.isArray(q.options) ? q.options.join(', ') : ''
     });
   };
@@ -119,7 +148,7 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
   return (
     <>
       <div className="drawer-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000 }} />
-      <div className="operation-drawer" style={{ zIndex: 1001, width: 600, padding: 0, display: 'flex', flexDirection: 'column' }}>
+      <div className="operation-drawer survey-config-drawer" style={{ zIndex: 1001, width: 640, padding: 0, display: 'flex', flexDirection: 'column' }}>
         <header className="panel-heading" style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <span className="section-kicker">Tuỳ chỉnh nâng cao</span>
@@ -128,71 +157,105 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
           <button className="icon-button" onClick={onClose} type="button"><X size={24} /></button>
         </header>
 
-        <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
-          {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
+        <div className="survey-config-drawer-body">
+          <div className="survey-admin-tabs survey-config-audience-tabs" role="tablist">
+            {Object.entries(AUDIENCE_LABELS).map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={audienceTab === key}
+                className={'survey-admin-tab' + (audienceTab === key ? ' is-active' : '')}
+                onClick={() => { setAudienceTab(key); if (!editingId) setForm((f) => ({ ...f, targetAudience: key })); }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
-          <form className="operation-form-grid" onSubmit={handleSave} style={{ marginBottom: '32px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ fontSize: 16, marginBottom: 16, marginTop: 0 }}>{editingId ? 'Sửa câu hỏi' : 'Thêm câu hỏi mới'}</h3>
+          {error && <div className="form-error">{error}</div>}
+
+          <form className="operation-form-grid survey-config-form" onSubmit={handleSave}>
+            <h3>{editingId ? 'Sửa câu hỏi' : 'Thêm câu hỏi mới'} — {AUDIENCE_LABELS[form.targetAudience]}</h3>
             <label>Nội dung câu hỏi
-              <input value={form.text} onChange={e => setForm({ ...form, text: e.target.value })} required placeholder="VD: Giao diện có dễ nhìn không?" />
+              <input value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} required />
             </label>
             <label>Nhóm tiêu chí (Section)
-              <input value={form.section} onChange={e => setForm({ ...form, section: e.target.value })} required placeholder="VD: III. GIAO DIỆN & SỬ DỤNG" />
+              <input value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} required placeholder="VD: I. MỨC ĐỘ HỨNG THÚ" />
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="survey-config-form-row">
+              <label>Đối tượng
+                <select value={form.targetAudience} onChange={(e) => setForm({ ...form, targetAudience: e.target.value })}>
+                  <option value={SURVEY_AUDIENCE.STUDENT}>Học sinh</option>
+                  <option value={SURVEY_AUDIENCE.TEACHER}>Giáo viên</option>
+                </select>
+              </label>
               <label>Loại câu hỏi
-                <select value={form.type} onChange={e => setForm({ ...form, type: e.target.value })}>
-                  <option value="RATING_1_5">Đánh giá sao (1-5)</option>
+                <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+                  <option value="RATING_1_5">Thang điểm 1–5</option>
                   <option value="SINGLE_CHOICE">Trắc nghiệm 1 đáp án</option>
-                  <option value="TEXT_SHORT">Điền chữ (ngắn)</option>
+                  <option value="MULTI_CHOICE">Trắc nghiệm nhiều đáp án</option>
+                  <option value="TEXT_SHORT">Câu trả lời mở (ngắn)</option>
+                </select>
+              </label>
+            </div>
+            <div className="survey-config-form-row">
+              {form.type === 'RATING_1_5' && (
+                <label>Kiểu hiển thị
+                  <select value={form.ratingStyle} onChange={(e) => setForm({ ...form, ratingStyle: e.target.value })}>
+                    <option value="NUMBER">Số (Mức 1–5)</option>
+                    <option value="EMOJI">Biểu cảm (emoji)</option>
+                  </select>
+                </label>
+              )}
+              <label>Bắt buộc
+                <select value={String(form.required)} onChange={(e) => setForm({ ...form, required: e.target.value === 'true' })}>
+                  <option value="true">Có</option>
+                  <option value="false">Không</option>
                 </select>
               </label>
               <label>Trạng thái
-                <select value={String(form.isActive)} onChange={e => setForm({ ...form, isActive: e.target.value === 'true' })}>
+                <select value={String(form.isActive)} onChange={(e) => setForm({ ...form, isActive: e.target.value === 'true' })}>
                   <option value="true">Đang hiển thị</option>
                   <option value="false">Tạm ẩn</option>
                 </select>
               </label>
             </div>
 
-            {form.type === 'SINGLE_CHOICE' && (
+            {needsOptions && (
               <label>Danh sách đáp án (cách nhau bởi dấu phẩy)
-                <input value={form.options} onChange={e => setForm({ ...form, options: e.target.value })} required placeholder="Rất đẹp, Bình thường, Xấu" />
+                <input value={form.options} onChange={(e) => setForm({ ...form, options: e.target.value })} required placeholder="Rất dễ, Bình thường, Khó" />
               </label>
             )}
 
-            <div style={{ display: 'flex', gap: 12, marginTop: 12 }}>
+            <div className="survey-config-form-actions">
               <button type="submit" className="button button-primary" disabled={saving}>
                 <Save size={18} /> {editingId ? 'Lưu thay đổi' : 'Thêm câu hỏi'}
               </button>
-              {editingId && (
-                <button type="button" className="button button-secondary" onClick={resetForm}>Huỷ</button>
-              )}
+              {editingId && <button type="button" className="button button-secondary" onClick={resetForm}>Huỷ</button>}
             </div>
           </form>
 
-          <div className="questions-list" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            <h3 style={{ fontSize: 16, margin: 0 }}>Danh sách câu hỏi hiện tại ({questions.length})</h3>
-            {loading ? <p>Đang tải...</p> : questions.map(q => (
-              <div key={q.id} style={{ display: 'flex', alignItems: 'flex-start', padding: 16, background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, gap: 12, opacity: q.isActive ? 1 : 0.6 }}>
-                <GripVertical size={20} color="#94a3b8" style={{ marginTop: 4 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginBottom: 4 }}>{q.section} • {q.type}</div>
-                  <div style={{ fontWeight: 500 }}>{q.text}</div>
-                  {q.type === 'SINGLE_CHOICE' && q.options?.length > 0 && (
-                    <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>Đáp án: {q.options.join(', ')}</div>
-                  )}
+          <div className="survey-config-list">
+            <h3>Danh sách — {AUDIENCE_LABELS[audienceTab]} ({filteredQuestions.length})</h3>
+            {loading ? <p>Đang tải...</p> : filteredQuestions.map((q) => (
+              <div key={q.id} className={'survey-config-item' + (q.isActive ? '' : ' is-inactive')}>
+                <GripVertical size={20} color="#94a3b8" />
+                <div className="survey-config-item-copy">
+                  <div className="survey-config-item-meta">{q.section} • {q.type}{q.ratingStyle === 'EMOJI' ? ' • emoji' : ''}{q.required === false ? ' • tuỳ chọn' : ''}</div>
+                  <div>{q.text}</div>
+                  {q.options?.length > 0 && <small>Đáp án: {q.options.join(', ')}</small>}
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button type="button" onClick={() => toggleStatus(q.id, q.isActive)} className="text-button" style={{ color: q.isActive ? '#eab308' : '#22c55e', padding: '4px 8px' }}>
+                <div className="survey-config-item-actions">
+                  <button type="button" onClick={() => toggleStatus(q.id, q.isActive)} className="text-button">
                     {q.isActive ? 'Ẩn' : 'Bật'}
                   </button>
-                  <button type="button" onClick={() => startEdit(q)} className="icon-button" style={{ padding: 4 }} aria-label="Sửa"><Edit2 size={16} /></button>
-                  <button type="button" onClick={() => handleDelete(q.id)} className="icon-button" style={{ padding: 4, color: '#ef4444' }} aria-label="Xoá"><Trash2 size={16} /></button>
+                  <button type="button" onClick={() => startEdit(q)} className="icon-button" aria-label="Sửa"><Edit2 size={16} /></button>
+                  <button type="button" onClick={() => handleDelete(q.id)} className="icon-button danger-icon-button" aria-label="Xoá"><Trash2 size={16} /></button>
                 </div>
               </div>
             ))}
-            {!loading && questions.length === 0 && <p className="muted">Chưa có câu hỏi nào.</p>}
+            {!loading && filteredQuestions.length === 0 && <p className="muted">Chưa có câu hỏi cho nhóm này.</p>}
           </div>
         </div>
       </div>

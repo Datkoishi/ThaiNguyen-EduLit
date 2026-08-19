@@ -1,11 +1,19 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ClipboardList, X } from 'lucide-react';
 import SurveyForm from './SurveyForm.jsx';
 import { apiRequest } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import {
+  SURVEY_COPY,
+  surveyAudienceFromRole,
+  surveysMePath
+} from '../constants/surveyAudience.js';
 
 export default function SurveyWidget() {
   const { user, token } = useAuth();
+  const audience = useMemo(() => surveyAudienceFromRole(user?.role), [user?.role]);
+  const copy = SURVEY_COPY[audience];
+
   const [isOpen, setIsOpen] = useState(false);
   const [checking, setChecking] = useState(true);
   const [alreadyDone, setAlreadyDone] = useState(false);
@@ -22,18 +30,22 @@ export default function SurveyWidget() {
       }
       setChecking(true);
       try {
-        const res = await apiRequest('/surveys/me', { token });
+        const res = await apiRequest(surveysMePath(audience), { token });
         if (!cancelled) setAlreadyDone(Boolean(res.data));
       } catch {
-        // Fallback: nếu API lỗi, vẫn cho hiện widget (user có thể bị 409 khi submit)
-        if (!cancelled) setAlreadyDone(false);
+        try {
+          const res = await apiRequest('/surveys/me', { token });
+          if (!cancelled) setAlreadyDone(Boolean(res.data));
+        } catch {
+          if (!cancelled) setAlreadyDone(false);
+        }
       } finally {
         if (!cancelled) setChecking(false);
       }
     };
     check();
     return () => { cancelled = true; };
-  }, [user, token]);
+  }, [user, token, audience]);
 
   if (checking || alreadyDone || !user || (user.role !== 'STUDENT' && user.role !== 'TEACHER')) {
     return null;
@@ -51,8 +63,8 @@ export default function SurveyWidget() {
           <ClipboardList size={28} />
         </div>
         <div className="toolbox-content">
-          <strong>Đánh giá học liệu</strong>
-          <span>Dành 1 phút góp ý để nhận quà nhé!</span>
+          <strong>{copy.widgetTitle}</strong>
+          <span>{copy.widgetSubtitle}</span>
         </div>
         <button className="toolbox-button" type="button">Bắt đầu</button>
       </div>
@@ -69,8 +81,9 @@ export default function SurveyWidget() {
               <X size={24} />
             </button>
             <div className="survey-header">
-              <div className="survey-kicker"><ClipboardList size={20} /> PHIẾU KHẢO SÁT HỌC SINH</div>
-              <h1>Đánh giá chất lượng bộ học liệu số</h1>
+              <div className="survey-kicker"><ClipboardList size={20} /> {copy.kicker}</div>
+              <h1>{copy.title}</h1>
+              <p>{copy.subtitle}</p>
             </div>
             <SurveyForm onSuccess={handleSuccess} />
           </div>

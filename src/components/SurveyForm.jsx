@@ -1,24 +1,24 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { LoaderCircle, Sparkles, ChevronRight, ChevronLeft } from 'lucide-react';
 import { apiRequest } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import { PageLoader } from './Common.jsx';
+import {
+  EMOJI_RATINGS,
+  SURVEY_COPY,
+  filterQuestionsByAudience,
+  surveyAudienceFromRole
+} from '../constants/surveyAudience.js';
 
-const productEvaluations = [
-  { id: 'prod_video', text: 'Video tương tác' },
-  { id: 'prod_comic', text: 'Truyện tranh số / Sách tương tác' },
-  { id: 'prod_game', text: 'Trò chơi tương tác' },
-  { id: 'prod_simulation', text: 'Sơ đồ / Mô phỏng' },
-];
-
-export default function SurveyForm({ onSuccess }) {
-  const { token } = useAuth();
+export default function SurveyForm({ onSuccess, onAudienceResolved }) {
+  const { token, user } = useAuth();
+  const audience = surveyAudienceFromRole(user?.role);
+  const copy = SURVEY_COPY[audience];
 
   const [form, setForm] = useState({
     schoolClass: '',
     gender: '',
     ratings: {},
-    productRatings: {},
     feedback: ''
   });
 
@@ -30,78 +30,98 @@ export default function SurveyForm({ onSuccess }) {
   const [initError, setInitError] = useState('');
 
   useEffect(() => {
+    if (onAudienceResolved) onAudienceResolved(audience);
+  }, [audience, onAudienceResolved]);
+
+  useEffect(() => {
     let cancelled = false;
     const loadQuestions = async () => {
       setInitLoading(true);
       setInitError('');
       try {
-        const res = await apiRequest('/survey-questions', { token });
-        if (!cancelled) setSurveyQuestions(res.data || []);
-      } catch (err) {
-        if (!cancelled) setInitError(err.message || 'Không tải được câu hỏi khảo sát.');
+        const res = await apiRequest('/survey-questions?audience=' + audience, { token });
+        const filtered = filterQuestionsByAudience(res.data || [], audience);
+        if (!cancelled) setSurveyQuestions(filtered);
+      } catch {
+        try {
+          const res = await apiRequest('/survey-questions', { token });
+          const filtered = filterQuestionsByAudience(res.data || [], audience);
+          if (!cancelled) setSurveyQuestions(filtered);
+        } catch (err) {
+          if (!cancelled) setInitError(err.message || 'Không tải được câu hỏi khảo sát.');
+        }
       } finally {
         if (!cancelled) setInitLoading(false);
       }
     };
     if (token) loadQuestions();
     return () => { cancelled = true; };
-  }, [token]);
+  }, [token, audience]);
 
-  const sections = [];
-  surveyQuestions.forEach(q => {
-    let section = sections.find(s => s.title === q.section);
-    if (!section) {
-      section = { title: q.section, questions: [] };
-      sections.push(section);
-    }
-    section.questions.push(q);
-  });
+  const sections = useMemo(() => {
+    const list = [];
+    surveyQuestions.forEach((q) => {
+      let section = list.find((s) => s.title === q.section);
+      if (!section) {
+        section = { title: q.section || 'Câu hỏi', questions: [] };
+        list.push(section);
+      }
+      section.questions.push(q);
+    });
+    return list;
+  }, [surveyQuestions]);
 
-  const steps = [
-    { type: 'info', title: 'Thông tin chung' },
-    ...sections.map(s => ({ type: 'questions', title: s.title, data: s })),
-    { type: 'products', title: 'VII. Đánh giá từng sản phẩm' },
-    { type: 'feedback', title: 'VIII. Ý kiến đóng góp' }
-  ];
+  const steps = useMemo(() => [
+    { type: 'info', title: 'Giới thiệu & thông tin' },
+    ...sections.map((s) => ({ type: 'questions', title: s.title, data: s }))
+  ], [sections]);
 
   const handleRatingChange = (qId, value) => {
-    setForm(prev => ({
+    setForm((prev) => ({
       ...prev,
       ratings: { ...prev.ratings, [qId]: value }
     }));
   };
 
-  const handleProductRatingChange = (pId, value) => {
-    setForm(prev => ({
-      ...prev,
-      productRatings: { ...prev.productRatings, [pId]: value }
-    }));
+  const toggleMultiChoice = (qId, option) => {
+    setForm((prev) => {
+      const current = Array.isArray(prev.ratings[qId]) ? prev.ratings[qId] : [];
+      const next = current.includes(option)
+        ? current.filter((item) => item !== option)
+        : [...current, option];
+      return { ...prev, ratings: { ...prev.ratings, [qId]: next } };
+    });
   };
 
+  const isRequired = (q) => q.required !== false;
+
   const isAnswered = (q, value) => {
-    if (q.type === 'TEXT_SHORT') return typeof value === 'string' && value.trim().length > 0;
+    if (!isRequired(q)) return true;
+    if (q.type === 'TEXT_SHORT') {
+      return typeof value === 'string' && value.trim().length > 0;
+    }
     if (q.type === 'SINGLE_CHOICE') return Boolean(value);
-    return value >= 1 && value <= 5;
+    if (q.type === 'MULTI_CHOICE') {
+      return Array.isArray(value) && value.length > 0;
+    }
+    return Number(value) >= 1 && Number(value) <= 5;
   };
 
   const validateStep = () => {
     const step = steps[currentStep];
     if (step.type === 'info') {
-      if (!form.schoolClass || !form.gender) {
-        setError('Vui lòng điền đầy đủ Lớp và Giới tính.');
+      if (!form.schoolClass.trim()) {
+        setError('Vui lòng điền ' + copy.classLabel.toLowerCase() + '.');
+        return false;
+      }
+      if (copy.showGender && !form.gender) {
+        setError('Vui lòng chọn giới tính.');
         return false;
       }
     } else if (step.type === 'questions') {
       for (const q of step.data.questions) {
         if (!isAnswered(q, form.ratings[q.id])) {
-          setError('Vui lòng đánh giá tất cả các tiêu chí.');
-          return false;
-        }
-      }
-    } else if (step.type === 'products') {
-      for (const p of productEvaluations) {
-        if (!form.productRatings[p.id]) {
-          setError('Vui lòng đánh giá mức độ hữu ích của tất cả sản phẩm.');
+          setError('Vui lòng trả lời đầy đủ các câu bắt buộc.');
           return false;
         }
       }
@@ -111,11 +131,11 @@ export default function SurveyForm({ onSuccess }) {
   };
 
   const nextStep = () => {
-    if (validateStep()) setCurrentStep(s => s + 1);
+    if (validateStep()) setCurrentStep((s) => s + 1);
   };
 
   const prevStep = () => {
-    setCurrentStep(s => s - 1);
+    setCurrentStep((s) => s - 1);
     setError('');
   };
 
@@ -127,13 +147,22 @@ export default function SurveyForm({ onSuccess }) {
       await apiRequest('/surveys', {
         method: 'POST',
         token,
-        body: form
+        body: {
+          targetAudience: audience,
+          schoolClass: form.schoolClass.trim(),
+          gender: copy.showGender ? form.gender : undefined,
+          ratings: form.ratings,
+          productRatings: {},
+          feedback: form.feedback || ''
+        }
       });
-      if (onSuccess) onSuccess();
+      if (onSuccess) onSuccess(audience);
     } catch (err) {
       if (err.code === 'SURVEY_ALREADY_SUBMITTED') {
-        setError('Bạn đã gửi phiếu khảo sát rồi.');
-        if (onSuccess) onSuccess();
+        setError(audience === 'TEACHER'
+          ? 'Thầy/cô đã gửi phiếu khảo sát rồi.'
+          : 'Bạn đã gửi phiếu khảo sát rồi.');
+        if (onSuccess) onSuccess(audience);
       } else {
         setError(err.message || 'Đã có lỗi xảy ra khi gửi khảo sát.');
       }
@@ -145,7 +174,7 @@ export default function SurveyForm({ onSuccess }) {
   if (initLoading) return <PageLoader label="Đang tải câu hỏi khảo sát..." />;
   if (initError) return <div className="form-error survey-error">{initError}</div>;
   if (!surveyQuestions.length) {
-    return <div className="form-error survey-error">Hiện chưa có câu hỏi khảo sát. Vui lòng thử lại sau.</div>;
+    return <div className="form-error survey-error">Hiện chưa có câu hỏi khảo sát cho nhóm này. Vui lòng thử lại sau.</div>;
   }
 
   const currentStepData = steps[currentStep];
@@ -165,58 +194,77 @@ export default function SurveyForm({ onSuccess }) {
       <div className="wizard-step-content animation-fade-in" key={currentStep}>
         {currentStepData.type === 'info' && (
           <div className="wizard-section">
-            <div className="survey-instructions">
-              <strong>Hướng dẫn:</strong> Các em hãy đánh giá trung thực mức độ phù hợp nhất.
-              <div className="rating-legend">
-                <div className="legend-item"><span>1</span> Hoàn toàn không đồng ý</div>
-                <div className="legend-item"><span>2</span> Không đồng ý</div>
-                <div className="legend-item"><span>3</span> Phân vân</div>
-                <div className="legend-item"><span>4</span> Đồng ý</div>
-                <div className="legend-item"><span>5</span> Hoàn toàn đồng ý</div>
-              </div>
+            <div className="survey-intro-block">
+              <p>{copy.intro}</p>
+              <p className="survey-intro-reassurance"><strong>{copy.reassurance}</strong></p>
             </div>
 
             <div className="general-info-grid">
               <label className="wizard-input-group">
-                Lớp học của em:
+                {copy.classLabel}:
                 <input
                   type="text"
                   value={form.schoolClass}
-                  onChange={e => setForm({ ...form, schoolClass: e.target.value })}
-                  placeholder="VD: 6A1"
-                  maxLength={20}
+                  onChange={(e) => setForm({ ...form, schoolClass: e.target.value })}
+                  placeholder={copy.classPlaceholder}
+                  maxLength={40}
                 />
               </label>
-              <div className="wizard-input-group">
-                <span>Giới tính:</span>
-                <div className="gender-options-wizard">
-                  <label className={form.gender === 'Nam' ? 'active' : ''}>
-                    <input type="radio" name="gender" value="Nam" onChange={e => setForm({ ...form, gender: e.target.value })} checked={form.gender === 'Nam'} />
-                    Nam
-                  </label>
-                  <label className={form.gender === 'Nữ' ? 'active' : ''}>
-                    <input type="radio" name="gender" value="Nữ" onChange={e => setForm({ ...form, gender: e.target.value })} checked={form.gender === 'Nữ'} />
-                    Nữ
-                  </label>
+              {copy.showGender && (
+                <div className="wizard-input-group">
+                  <span>Giới tính:</span>
+                  <div className="gender-options-wizard">
+                    <label className={form.gender === 'Nam' ? 'active' : ''}>
+                      <input type="radio" name="gender" value="Nam" onChange={(e) => setForm({ ...form, gender: e.target.value })} checked={form.gender === 'Nam'} />
+                      Nam
+                    </label>
+                    <label className={form.gender === 'Nữ' ? 'active' : ''}>
+                      <input type="radio" name="gender" value="Nữ" onChange={(e) => setForm({ ...form, gender: e.target.value })} checked={form.gender === 'Nữ'} />
+                      Nữ
+                    </label>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         )}
 
         {currentStepData.type === 'questions' && (
           <div className="wizard-section">
-            <div className="wizard-questions-list" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div className="wizard-questions-list survey-question-stack">
               {currentStepData.data.questions.map((q) => (
-                <div key={q.id} className="survey-question-card" style={{ background: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <div className="question-text" style={{ fontWeight: 600, marginBottom: '12px' }}>
+                <div key={q.id} className="survey-question-card">
+                  <div className="question-text">
                     <span className="q-content">{q.text}</span>
+                    {!isRequired(q) && <small className="survey-optional-tag">Không bắt buộc</small>}
                   </div>
 
-                  {q.type === 'RATING_1_5' && (
-                    <div className="question-ratings" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                      {[1, 2, 3, 4, 5].map(val => (
-                        <label key={val} className="rating-radio" style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                  {q.type === 'RATING_1_5' && q.ratingStyle === 'EMOJI' && (
+                    <div className="survey-emoji-ratings">
+                      {EMOJI_RATINGS.map(({ value, emoji, label }) => (
+                        <label
+                          key={value}
+                          className={'survey-emoji-option' + (form.ratings[q.id] === value ? ' is-selected' : '')}
+                          title={label}
+                        >
+                          <input
+                            type="radio"
+                            name={q.id}
+                            value={value}
+                            checked={form.ratings[q.id] === value}
+                            onChange={() => handleRatingChange(q.id, value)}
+                          />
+                          <span className="survey-emoji-icon">{emoji}</span>
+                          <span className="survey-emoji-label">{label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+
+                  {q.type === 'RATING_1_5' && q.ratingStyle !== 'EMOJI' && (
+                    <div className="question-ratings survey-number-ratings">
+                      {[1, 2, 3, 4, 5].map((val) => (
+                        <label key={val} className="rating-radio">
                           <input
                             type="radio"
                             name={q.id}
@@ -231,9 +279,9 @@ export default function SurveyForm({ onSuccess }) {
                   )}
 
                   {q.type === 'SINGLE_CHOICE' && q.options && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div className="survey-choice-list">
                       {q.options.map((opt, idx) => (
-                        <label key={idx} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                        <label key={idx} className="survey-choice-row">
                           <input
                             type="radio"
                             name={q.id}
@@ -247,71 +295,36 @@ export default function SurveyForm({ onSuccess }) {
                     </div>
                   )}
 
+                  {q.type === 'MULTI_CHOICE' && q.options && (
+                    <div className="survey-choice-list">
+                      {q.options.map((opt, idx) => {
+                        const selected = Array.isArray(form.ratings[q.id]) && form.ratings[q.id].includes(opt);
+                        return (
+                          <label key={idx} className={'survey-choice-row' + (selected ? ' is-selected' : '')}>
+                            <input
+                              type="checkbox"
+                              checked={selected}
+                              onChange={() => toggleMultiChoice(q.id, opt)}
+                            />
+                            {opt}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+
                   {q.type === 'TEXT_SHORT' && (
-                    <input
-                      type="text"
+                    <textarea
                       value={form.ratings[q.id] || ''}
-                      onChange={e => handleRatingChange(q.id, e.target.value)}
-                      placeholder="Nhập câu trả lời của em..."
-                      style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #cbd5e1' }}
+                      onChange={(e) => handleRatingChange(q.id, e.target.value)}
+                      placeholder="Nhập câu trả lời của bạn..."
+                      rows={3}
+                      className="survey-text-answer"
                     />
                   )}
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        {currentStepData.type === 'products' && (
-          <div className="wizard-section survey-products">
-            <p className="section-desc">Đánh giá mức độ hữu ích của từng loại học liệu.</p>
-            <div className="wizard-table-header products-header">
-              <div className="th-content">Loại học liệu</div>
-              <div className="th-ratings products-ratings-labels">
-                <span>Rất không hữu ích</span>
-                <span>Không hữu ích</span>
-                <span>Bình thường</span>
-                <span>Hữu ích</span>
-                <span>Rất hữu ích</span>
-              </div>
-            </div>
-            <div className="wizard-questions-list">
-              {productEvaluations.map((p) => (
-                <div key={p.id} className="survey-question-row">
-                  <div className="question-text">
-                    <span className="q-content">{p.text}</span>
-                  </div>
-                  <div className="question-ratings">
-                    {[1, 2, 3, 4, 5].map(val => (
-                      <label key={val} className="rating-radio" title={'Mức ' + val}>
-                        <input
-                          type="radio"
-                          name={p.id}
-                          value={val}
-                          checked={form.productRatings[p.id] === val}
-                          onChange={() => handleProductRatingChange(p.id, val)}
-                        />
-                        <span className="radio-custom"></span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {currentStepData.type === 'feedback' && (
-          <div className="wizard-section">
-            <label className="open-question">
-              <strong>Theo em, bộ học liệu cần bổ sung hoặc cải thiện điều gì?</strong>
-              <textarea
-                value={form.feedback}
-                onChange={e => setForm({ ...form, feedback: e.target.value })}
-                rows={5}
-                placeholder="Nhập ý kiến đóng góp của em (không bắt buộc)..."
-              />
-            </label>
           </div>
         )}
       </div>
@@ -332,7 +345,7 @@ export default function SurveyForm({ onSuccess }) {
           ) : (
             <button type="button" className="button button-primary button-large pulse-btn" onClick={submitSurvey} disabled={loading}>
               {loading ? <LoaderCircle className="spin" size={20} /> : <Sparkles size={20} />}
-              Hoàn tất & Gửi
+              Gửi phiếu khảo sát
             </button>
           )}
         </div>

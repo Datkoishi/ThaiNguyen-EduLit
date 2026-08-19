@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   Ban,
   CheckCircle2,
@@ -8,28 +8,27 @@ import {
   KeyRound,
   LoaderCircle,
   MessageCircle,
+  MessageSquareText,
   Pencil,
   Plus,
   RotateCcw,
   Save,
   Search,
   Send,
+  Settings2,
   ShieldCheck,
+  Star,
+  Trash2,
   UserCheck,
   UserRound,
-  Users,
-  Settings2,
-  Trash2
+  Users
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { apiRequest } from '../api.js';
 import { ErrorState, PageLoader } from '../components/Common.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import AdminSurveyConfigDrawer from '../components/AdminSurveyConfigDrawer.jsx';
-import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
-} from 'recharts';
+import { SURVEY_AUDIENCE } from '../constants/surveyAudience.js';
 
 const dateTimeLabel = (value) => value
   ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -356,6 +355,42 @@ export function AdminAuditPage() {
   );
 }
 
+const LEVEL_COLORS = {
+  1: '#ef4444',
+  2: '#f97316',
+  3: '#eab308',
+  4: '#3b82f6',
+  5: '#22c55e'
+};
+
+const PRODUCT_LABELS = {
+  prod_video: 'Video tương tác',
+  prod_comic: 'Truyện tranh số',
+  prod_game: 'Trò chơi tương tác',
+  prod_simulation: 'Sơ đồ / Mô phỏng'
+};
+
+function DistBar({ counts, total }) {
+  if (!total) {
+    return <div className="survey-dist-bar survey-dist-bar--empty" />;
+  }
+  return (
+    <div className="survey-dist-bar" title={`Tổng ${total} lượt`}>
+      {[1, 2, 3, 4, 5].map((level) => {
+        const n = counts[level] || 0;
+        if (!n) return null;
+        return (
+          <span
+            key={level}
+            style={{ width: `${(n / total) * 100}%`, background: LEVEL_COLORS[level] }}
+            title={`Mức ${level}: ${n} (${Math.round((n / total) * 100)}%)`}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 export function AdminSurveyPage() {
   const { token } = useAuth();
   const [surveys, setSurveys] = useState([]);
@@ -363,6 +398,13 @@ export function AdminSurveyPage() {
   const [error, setError] = useState('');
   const [configOpen, setConfigOpen] = useState(false);
   const [adminQuestions, setAdminQuestions] = useState([]);
+  const [tab, setTab] = useState('overview');
+  const [query, setQuery] = useState('');
+  const [expandedId, setExpandedId] = useState(null);
+  const [audienceFilter, setAudienceFilter] = useState(SURVEY_AUDIENCE.STUDENT);
+
+  const surveyAudienceOf = (survey) => survey.targetAudience || SURVEY_AUDIENCE.STUDENT;
+  const questionAudienceOf = (question) => question.targetAudience || SURVEY_AUDIENCE.STUDENT;
 
   const load = async () => {
     setLoading(true);
@@ -395,6 +437,7 @@ export function AdminSurveyPage() {
     try {
       await apiRequest('/admin/surveys/' + id, { method: 'DELETE', token });
       setSurveys(prev => prev.filter(s => s.id !== id));
+      setExpandedId(prev => (prev === id ? null : prev));
     } catch (err) {
       setError(err.message || 'Không xoá được phiếu.');
     }
@@ -402,21 +445,29 @@ export function AdminSurveyPage() {
 
   useEffect(() => { load(); }, [token]);
 
-  // Compute statistics
-  const total = surveys.length;
+  const scopedSurveys = useMemo(
+    () => surveys.filter((s) => surveyAudienceOf(s) === audienceFilter),
+    [surveys, audienceFilter]
+  );
+
+  const scopedQuestions = useMemo(
+    () => adminQuestions.filter((q) => questionAudienceOf(q) === audienceFilter),
+    [adminQuestions, audienceFilter]
+  );
+
+  const total = scopedSurveys.length;
   let overallSum = 0;
   let qCount = 0;
-
-  const genderDataMap = { 'Nam': 0, 'Nữ': 0, 'Khác': 0 };
+  const genderDataMap = { Nam: 0, Nữ: 0, Khác: 0 };
 
   const dynamicQuestionStats = {};
-  adminQuestions.forEach(q => {
+  scopedQuestions.forEach(q => {
     if (q.type === 'RATING_1_5') {
-      dynamicQuestionStats[q.id] = { id: q.id, text: q.text, type: q.type, total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
-    } else if (q.type === 'SINGLE_CHOICE') {
-      dynamicQuestionStats[q.id] = { id: q.id, text: q.text, type: q.type, total: 0, answers: {} };
+      dynamicQuestionStats[q.id] = { id: q.id, text: q.text, section: q.section, type: q.type, isActive: q.isActive, total: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    } else if (q.type === 'SINGLE_CHOICE' || q.type === 'MULTI_CHOICE') {
+      dynamicQuestionStats[q.id] = { id: q.id, text: q.text, section: q.section, type: q.type, isActive: q.isActive, total: 0, answers: {} };
     } else {
-      dynamicQuestionStats[q.id] = { id: q.id, text: q.text, type: q.type, total: 0, answers: [] };
+      dynamicQuestionStats[q.id] = { id: q.id, text: q.text, section: q.section, type: q.type, isActive: q.isActive, total: 0, answers: [] };
     }
   });
 
@@ -427,10 +478,13 @@ export function AdminSurveyPage() {
     prod_simulation: { sum: 0, count: 0 }
   };
 
-  surveys.forEach(s => {
+  let feedbackCount = 0;
+
+  scopedSurveys.forEach(s => {
+    if (s.feedback?.trim()) feedbackCount += 1;
     if (s.gender) {
-      if (genderDataMap[s.gender] !== undefined) genderDataMap[s.gender]++;
-      else genderDataMap['Khác']++;
+      if (genderDataMap[s.gender] !== undefined) genderDataMap[s.gender] += 1;
+      else genderDataMap.Khác += 1;
     }
 
     const r = s.ratings || {};
@@ -442,196 +496,428 @@ export function AdminSurveyPage() {
         const score = Number(r[k]);
         if (!Number.isFinite(score)) return;
         overallSum += score;
-        qCount++;
+        qCount += 1;
         qObj[score] = (qObj[score] || 0) + 1;
       } else if (qObj.type === 'SINGLE_CHOICE') {
         qObj.answers[r[k]] = (qObj.answers[r[k]] || 0) + 1;
+      } else if (qObj.type === 'MULTI_CHOICE' && Array.isArray(r[k])) {
+        r[k].forEach((choice) => {
+          qObj.answers[choice] = (qObj.answers[choice] || 0) + 1;
+        });
       } else if (r[k]) {
         qObj.answers.push(r[k]);
       }
-      qObj.total++;
+      qObj.total += 1;
     });
 
     const pr = s.productRatings || {};
     Object.keys(pr).forEach(k => {
       if (productAverages[k] !== undefined) {
         productAverages[k].sum += Number(pr[k]);
-        productAverages[k].count++;
+        productAverages[k].count += 1;
       }
     });
   });
 
-  const overallAvg = qCount > 0 ? (overallSum / qCount).toFixed(2) : 0;
+  const overallAvg = qCount > 0 ? (overallSum / qCount).toFixed(2) : '—';
+  const activeQuestionCount = scopedQuestions.filter(q => q.isActive !== false).length;
 
-  const pieData = Object.keys(genderDataMap)
-    .filter(k => genderDataMap[k] > 0)
-    .map(k => ({ name: k, value: genderDataMap[k] }));
+  const ratingQuestions = Object.values(dynamicQuestionStats)
+    .filter(q => q.type === 'RATING_1_5')
+    .map(q => {
+      const avg = q.total
+        ? Number(((q[1] * 1 + q[2] * 2 + q[3] * 3 + q[4] * 4 + q[5] * 5) / q.total).toFixed(2))
+        : null;
+      return { ...q, avg };
+    })
+    .sort((a, b) => (b.avg || 0) - (a.avg || 0));
 
-  const questionBarData = Object.values(dynamicQuestionStats).filter(q => q.type === 'RATING_1_5').map(q => {
-    if (q.total === 0) return { name: q.text, 'Mức 1': 0, 'Mức 2': 0, 'Mức 3': 0, 'Mức 4': 0, 'Mức 5': 0, raw1: 0, raw2: 0, raw3: 0, raw4: 0, raw5: 0, avg: 0 };
-    return {
-      name: q.text,
-      'Mức 1': Number(((q[1] / q.total) * 100).toFixed(1)),
-      'Mức 2': Number(((q[2] / q.total) * 100).toFixed(1)),
-      'Mức 3': Number(((q[3] / q.total) * 100).toFixed(1)),
-      'Mức 4': Number(((q[4] / q.total) * 100).toFixed(1)),
-      'Mức 5': Number(((q[5] / q.total) * 100).toFixed(1)),
-      raw1: q[1], raw2: q[2], raw3: q[3], raw4: q[4], raw5: q[5],
-      avg: Number(((q[1]*1 + q[2]*2 + q[3]*3 + q[4]*4 + q[5]*5) / q.total).toFixed(2))
-    };
-  });
+  const otherQuestions = Object.values(dynamicQuestionStats).filter(q => q.type !== 'RATING_1_5');
 
-  const productBarData = [
-    { name: 'Video', 'Điểm TB': productAverages.prod_video.count > 0 ? Number((productAverages.prod_video.sum / productAverages.prod_video.count).toFixed(2)) : 0 },
-    { name: 'Truyện số', 'Điểm TB': productAverages.prod_comic.count > 0 ? Number((productAverages.prod_comic.sum / productAverages.prod_comic.count).toFixed(2)) : 0 },
-    { name: 'Trò chơi', 'Điểm TB': productAverages.prod_game.count > 0 ? Number((productAverages.prod_game.sum / productAverages.prod_game.count).toFixed(2)) : 0 },
-    { name: 'Sơ đồ', 'Điểm TB': productAverages.prod_simulation.count > 0 ? Number((productAverages.prod_simulation.sum / productAverages.prod_simulation.count).toFixed(2)) : 0 }
-  ];
+  const productRows = Object.keys(PRODUCT_LABELS).map(id => ({
+    id,
+    label: PRODUCT_LABELS[id],
+    avg: productAverages[id].count
+      ? Number((productAverages[id].sum / productAverages[id].count).toFixed(2))
+      : null,
+    count: productAverages[id].count
+  }));
 
-  const PIE_COLORS = ['#3b82f6', '#ec4899', '#8b5cf6'];
+  const genderRows = Object.entries(genderDataMap)
+    .filter(([, value]) => value > 0)
+    .map(([name, value]) => ({
+      name,
+      value,
+      pct: total ? Math.round((value / total) * 100) : 0
+    }));
+
+  const filteredSurveys = useMemo(() => {
+    const term = query.trim().toLocaleLowerCase('vi');
+    const base = scopedSurveys;
+    if (!term) return base;
+    return base.filter(s =>
+      [s.userFullName, s.userEmail, s.schoolClass, s.gender, s.feedback]
+        .filter(Boolean)
+        .join(' ')
+        .toLocaleLowerCase('vi')
+        .includes(term)
+    );
+  }, [scopedSurveys, query]);
 
   if (loading) return <PageLoader label="Đang tải dữ liệu khảo sát..." />;
   if (error) return <ErrorState message={error} onRetry={load} />;
 
   return (
-    <div className="page admin-operations-page">
+    <div className="page admin-operations-page survey-admin-page">
       <header className="admin-title">
         <div>
           <span className="section-kicker">Phân tích</span>
           <h1>Kết quả khảo sát</h1>
-          <p>Thống kê chi tiết đánh giá từ học sinh qua các biểu đồ phân tích.</p>
+          <p>Theo dõi điểm theo câu hỏi, loại học liệu và danh sách phiếu đã gửi.</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="button button-primary" onClick={() => setConfigOpen(true)}><Settings2 size={17} /> Cấu hình câu hỏi</button>
-          <button className="button button-secondary" onClick={load}><RotateCcw size={17} /> Làm mới</button>
+        <div className="survey-admin-actions">
+          <button type="button" className="button button-primary" onClick={() => setConfigOpen(true)}>
+            <Settings2 size={17} /> Cấu hình câu hỏi
+          </button>
+          <button type="button" className="button button-secondary" onClick={load}>
+            <RotateCcw size={17} /> Làm mới
+          </button>
         </div>
       </header>
-      
-      <div className="dashboard-grid" style={{ marginBottom: 30 }}>
-        <div className="stat-card">
-          <span className="stat-icon"><ClipboardList size={24} /></span>
-          <div className="stat-info">
-            <strong>{total}</strong>
-            <span>Tổng số phiếu</span>
-          </div>
-        </div>
-        <div className="stat-card">
-          <span className="stat-icon"><CheckCircle2 size={24} /></span>
-          <div className="stat-info">
-            <strong>{overallAvg} / 5.0</strong>
-            <span>Điểm đánh giá trung bình</span>
-          </div>
-        </div>
+
+      <div className="survey-admin-tabs survey-audience-filter" role="tablist">
+        <button
+          type="button"
+          className={'survey-admin-tab' + (audienceFilter === SURVEY_AUDIENCE.STUDENT ? ' is-active' : '')}
+          onClick={() => setAudienceFilter(SURVEY_AUDIENCE.STUDENT)}
+        >
+          Học sinh
+        </button>
+        <button
+          type="button"
+          className={'survey-admin-tab' + (audienceFilter === SURVEY_AUDIENCE.TEACHER ? ' is-active' : '')}
+          onClick={() => setAudienceFilter(SURVEY_AUDIENCE.TEACHER)}
+        >
+          Giáo viên
+        </button>
       </div>
 
-      {total > 0 && (
-        <section className="survey-charts-grid" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', marginTop: '24px' }}>
-        
-        <div className="admin-table-card" style={{ padding: '24px' }}>
-          <h3 style={{ marginBottom: '24px', fontSize: '16px' }}>Chi tiết đánh giá từng câu hỏi (%)</h3>
-          <div style={{ width: '100%', height: 400 }}>
-            <ResponsiveContainer>
-              <BarChart data={questionBarData} layout="vertical" margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" domain={[0, 100]} />
-                <YAxis type="category" dataKey="name" width={180} tick={{fontSize: 12}} />
-                <RechartsTooltip formatter={(value, name, props) => {
-                  if (name.includes('Mức')) {
-                    const level = name.replace('Mức ', '');
-                    const raw = props.payload['raw' + level];
-                    return [`${value}% (${raw} lượt)`, name];
-                  }
-                  return [value, name];
-                }} />
-                <Legend />
-                <Bar dataKey="Mức 1" stackId="a" fill="#ef4444" radius={[4, 0, 0, 4]} />
-                <Bar dataKey="Mức 2" stackId="a" fill="#f97316" />
-                <Bar dataKey="Mức 3" stackId="a" fill="#eab308" />
-                <Bar dataKey="Mức 4" stackId="a" fill="#3b82f6" />
-                <Bar dataKey="Mức 5" stackId="a" fill="#22c55e" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+      <div className="metric-grid survey-metric-grid">
+        <article className="metric-card">
+          <span className="metric-icon"><ClipboardList size={20} /></span>
+          <div>
+            <span>TỔNG PHIẾU</span>
+            <strong>{total}</strong>
+            <small>Đã nhận từ học sinh / GV</small>
           </div>
-        </div>
+        </article>
+        <article className="metric-card">
+          <span className="metric-icon tone-green"><Star size={20} /></span>
+          <div>
+            <span>ĐIỂM TRUNG BÌNH</span>
+            <strong>{overallAvg === '—' ? '—' : `${overallAvg}`}</strong>
+            <small>{overallAvg === '—' ? 'Chưa có điểm Likert' : 'Trên thang điểm 5'}</small>
+          </div>
+        </article>
+        <article className="metric-card">
+          <span className="metric-icon tone-cyan"><Settings2 size={20} /></span>
+          <div>
+            <span>CÂU HỎI ĐANG HIỆN</span>
+            <strong>{activeQuestionCount}</strong>
+            <small>Trong tổng {scopedQuestions.length} câu ({audienceFilter === SURVEY_AUDIENCE.STUDENT ? 'HS' : 'GV'})</small>
+          </div>
+        </article>
+        <article className="metric-card">
+          <span className="metric-icon tone-pink"><MessageSquareText size={20} /></span>
+          <div>
+            <span>Ý KIẾN ĐÓNG GÓP</span>
+            <strong>{feedbackCount}</strong>
+            <small>{total ? `${Math.round((feedbackCount / total) * 100)}% phiếu có góp ý` : 'Chưa có phiếu'}</small>
+          </div>
+        </article>
+      </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-          <div className="admin-table-card" style={{ padding: '24px' }}>
-            <h3 style={{ marginBottom: '24px', fontSize: '16px', textAlign: 'center' }}>Thống kê Giới tính</h3>
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" outerRadius={100} label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`} dataKey="value">
-                    {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={PIE_COLORS[index % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <RechartsTooltip formatter={(value) => [`${value} học sinh`, 'Số lượng']} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
+      <div className="survey-admin-tabs" role="tablist">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'overview'}
+          className={'survey-admin-tab' + (tab === 'overview' ? ' is-active' : '')}
+          onClick={() => setTab('overview')}
+        >
+          Tổng quan
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'responses'}
+          className={'survey-admin-tab' + (tab === 'responses' ? ' is-active' : '')}
+          onClick={() => setTab('responses')}
+        >
+          Danh sách phiếu
+          <span className="survey-admin-tab-count">{total}</span>
+        </button>
+      </div>
 
-          <div className="admin-table-card" style={{ padding: '24px' }}>
-            <h3 style={{ marginBottom: '24px', fontSize: '16px', textAlign: 'center' }}>Điểm trung bình theo loại học liệu</h3>
-            <div style={{ width: '100%', height: 300 }}>
-              <ResponsiveContainer>
-                <BarChart data={productBarData} margin={{ top: 20, right: 30, left: 0, bottom: 5 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="name" />
-                  <YAxis domain={[0, 5]} />
-                  <RechartsTooltip formatter={(value) => [`${value} / 5 điểm`, 'Điểm TB']} />
-                  <Bar dataKey="Điểm TB" fill="#10b981" radius={[6, 6, 0, 0]} barSize={50} />
-                </BarChart>
-              </ResponsiveContainer>
+      {tab === 'overview' && (
+        <div className="survey-admin-layout">
+          <section className="admin-table-card survey-admin-main">
+            <div className="panel-heading survey-panel-heading">
+              <div>
+                <span className="section-kicker">Theo câu hỏi</span>
+                <h2>Điểm trung bình & phân bố</h2>
+              </div>
+              <div className="survey-legend">
+                {[1, 2, 3, 4, 5].map(level => (
+                  <span key={level}><i style={{ background: LEVEL_COLORS[level] }} /> Mức {level}</span>
+                ))}
+              </div>
             </div>
-          </div>
+
+            {!total ? (
+              <div className="survey-empty-hint">
+                <ClipboardList size={28} />
+                <p>Chưa có phiếu nào. Khi học sinh gửi khảo sát, điểm từng câu sẽ hiện tại đây.</p>
+              </div>
+            ) : (
+              <ul className="survey-question-stats">
+                {ratingQuestions.map((q, index) => (
+                  <li key={q.id} className="survey-question-stat">
+                    <div className="survey-question-stat-top">
+                      <div className="survey-question-stat-copy">
+                        <span className="survey-question-stat-index">#{index + 1}</span>
+                        {q.section && <span className="survey-question-stat-section">{q.section}</span>}
+                        <strong title={q.text}>{q.text}</strong>
+                      </div>
+                      <div className="survey-question-stat-score">
+                        <em>{q.avg != null ? q.avg.toFixed(2) : '—'}</em>
+                        <span>/ 5 · {q.total} lượt</span>
+                      </div>
+                    </div>
+                    <DistBar counts={q} total={q.total} />
+                  </li>
+                ))}
+                {otherQuestions.map(q => (
+                  <li key={q.id} className="survey-question-stat survey-question-stat--other">
+                    <div className="survey-question-stat-top">
+                      <div className="survey-question-stat-copy">
+                        <span className="survey-question-stat-section">{q.section || q.type}</span>
+                        <strong title={q.text}>{q.text}</strong>
+                      </div>
+                      <div className="survey-question-stat-score">
+                        <em>{q.total}</em>
+                        <span>câu trả lời</span>
+                      </div>
+                    </div>
+                    {(q.type === 'SINGLE_CHOICE' || q.type === 'MULTI_CHOICE') && (
+                      <div className="survey-choice-summary">
+                        {Object.entries(q.answers || {}).map(([label, count]) => (
+                          <span key={label}>{label}: <strong>{count}</strong></span>
+                        ))}
+                      </div>
+                    )}
+                    {q.type === 'TEXT_SHORT' && Array.isArray(q.answers) && q.answers.length > 0 && (
+                      <div className="survey-choice-summary">
+                        {q.answers.slice(0, 3).map((answer, i) => (
+                          <span key={i}>“{answer}”</span>
+                        ))}
+                        {q.answers.length > 3 && <span>+{q.answers.length - 3} khác</span>}
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+
+          <aside className="survey-admin-side">
+            <section className="admin-table-card">
+              <div className="panel-heading">
+                <div>
+                  <span className="section-kicker">Nhân khẩu</span>
+                  <h2>Giới tính</h2>
+                </div>
+              </div>
+              {!genderRows.length ? (
+                <p className="muted survey-side-empty">Chưa có dữ liệu.</p>
+              ) : (
+                <ul className="survey-side-list">
+                  {genderRows.map(row => (
+                    <li key={row.name}>
+                      <div className="survey-side-row">
+                        <strong>{row.name}</strong>
+                        <span>{row.value} · {row.pct}%</span>
+                      </div>
+                      <div className="survey-side-track">
+                        <span style={{ width: `${row.pct}%` }} />
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            <section className="admin-table-card">
+              <div className="panel-heading">
+                <div>
+                  <span className="section-kicker">Sản phẩm</span>
+                  <h2>Độ hữu ích</h2>
+                </div>
+              </div>
+              <ul className="survey-side-list">
+                {productRows.map(row => (
+                  <li key={row.id}>
+                    <div className="survey-side-row">
+                      <strong>{row.label}</strong>
+                      <span>{row.avg != null ? `${row.avg} / 5` : '—'}</span>
+                    </div>
+                    <div className="survey-side-track survey-side-track--product">
+                      <span style={{ width: `${row.avg != null ? (row.avg / 5) * 100 : 0}%` }} />
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
+            <section className="admin-table-card survey-config-card">
+              <div className="panel-heading">
+                <div>
+                  <span className="section-kicker">Quản lý</span>
+                  <h2>Bộ câu hỏi</h2>
+                </div>
+              </div>
+              <p className="survey-config-copy">Thêm, sửa, ẩn hoặc xoá câu hỏi khảo sát. Thay đổi áp dụng ngay cho phiếu mới.</p>
+              <button type="button" className="button button-primary" onClick={() => setConfigOpen(true)}>
+                <Settings2 size={17} /> Mở cấu hình
+              </button>
+            </section>
+          </aside>
         </div>
-      </section>
       )}
 
-      <section className="admin-table-card">
-        <div className="table-toolbar">
-          <h3>Danh sách phiếu khảo sát chi tiết</h3>
-          <span>{total} kết quả</span>
-        </div>
-        <div className="table-responsive">
-          <table className="admin-table">
-            <thead>
-              <tr>
-                <th>Học sinh</th>
-                <th>Email</th>
-                <th>Lớp</th>
-                <th>Ngày gửi</th>
-                <th>Ý kiến đóng góp</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {surveys.map(s => (
-                <tr key={s.id}>
-                  <td><strong>{s.userFullName || '—'}</strong></td>
-                  <td>{s.userEmail || '—'}</td>
-                  <td>{s.schoolClass || '—'} ({s.gender || '—'})</td>
-                  <td>{dateTimeLabel(s.createdAt)}</td>
-                  <td style={{ maxWidth: 300, whiteSpace: 'normal' }}>
-                    {s.feedback ? <span style={{ background: '#f8fafc', padding: '6px 10px', borderRadius: '8px', display: 'inline-block', fontSize: '13px' }}>{s.feedback}</span> : <em className="muted">Không có</em>}
-                  </td>
-                  <td>
-                    <button type="button" className="icon-button" onClick={() => deleteSurvey(s.id)} aria-label="Xoá phiếu">
-                      <Trash2 size={17} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {surveys.length === 0 && (
+      {tab === 'responses' && (
+        <section className="admin-table-card">
+          <div className="table-toolbar survey-responses-toolbar">
+            <div>
+              <h3>Danh sách phiếu</h3>
+              <span>{filteredSurveys.length} / {total} kết quả</span>
+            </div>
+            <label className="survey-search">
+              <Search size={16} />
+              <input
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Tìm tên, email, lớp, góp ý…"
+              />
+            </label>
+          </div>
+
+          <div className="table-responsive">
+            <table className="admin-table">
+              <thead>
                 <tr>
-                  <td colSpan="6" className="empty-cell">Chưa có khảo sát nào được gửi.</td>
+                  <th>Học sinh</th>
+                  <th>Lớp</th>
+                  <th>Ngày gửi</th>
+                  <th>Góp ý</th>
+                  <th></th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </section>
+              </thead>
+              <tbody>
+                {filteredSurveys.map(s => {
+                  const open = expandedId === s.id;
+                  return (
+                    <Fragment key={s.id}>
+                      <tr>
+                        <td>
+                          <strong>{s.userFullName || '—'}</strong>
+                          <small>{s.userEmail || '—'}</small>
+                        </td>
+                        <td>{s.schoolClass || '—'} · {s.gender || '—'}</td>
+                        <td>{dateTimeLabel(s.createdAt)}</td>
+                        <td>
+                          {s.feedback ? (
+                            <button
+                              type="button"
+                              className="text-button survey-feedback-preview"
+                              onClick={() => setExpandedId(open ? null : s.id)}
+                            >
+                              {s.feedback.length > 60 ? s.feedback.slice(0, 60) + '…' : s.feedback}
+                            </button>
+                          ) : (
+                            <em className="muted">Không có</em>
+                          )}
+                        </td>
+                        <td className="survey-row-actions">
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => setExpandedId(open ? null : s.id)}
+                            aria-label="Xem chi tiết"
+                          >
+                            <Eye size={17} />
+                          </button>
+                          <button
+                            type="button"
+                            className="icon-button"
+                            onClick={() => deleteSurvey(s.id)}
+                            aria-label="Xoá phiếu"
+                          >
+                            <Trash2 size={17} />
+                          </button>
+                        </td>
+                      </tr>
+                      {open && (
+                        <tr className="survey-detail-row">
+                          <td colSpan={5}>
+                            <div className="survey-detail-panel">
+                              {s.feedback && (
+                                <div>
+                                  <span className="section-kicker">Ý kiến</span>
+                                  <p>{s.feedback}</p>
+                                </div>
+                              )}
+                              <div>
+                                <span className="section-kicker">Điểm câu hỏi</span>
+                                <ul className="survey-detail-ratings">
+                                  {scopedQuestions.map(q => (
+                                    <li key={q.id}>
+                                      <span>{q.text}</span>
+                                      <strong>{Array.isArray(s.ratings?.[q.id]) ? s.ratings[q.id].join(', ') : (s.ratings?.[q.id] ?? '—')}</strong>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <span className="section-kicker">Sản phẩm</span>
+                                <ul className="survey-detail-ratings">
+                                  {Object.entries(PRODUCT_LABELS).map(([id, label]) => (
+                                    <li key={id}>
+                                      <span>{label}</span>
+                                      <strong>{s.productRatings?.[id] ?? '—'}</strong>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+                {filteredSurveys.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="empty-cell">
+                      {total ? 'Không có phiếu khớp từ khoá tìm kiếm.' : 'Chưa có khảo sát nào được gửi.'}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <AdminSurveyConfigDrawer
         open={configOpen}

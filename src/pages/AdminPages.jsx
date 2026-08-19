@@ -64,6 +64,7 @@ export function AdminProductsPage() {
   const [statusFilter, setStatusFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deletingId, setDeletingId] = useState(null);
 
   const load = () => {
     setLoading(true);
@@ -74,6 +75,24 @@ export function AdminProductsPage() {
       .finally(() => setLoading(false));
   };
   useEffect(load, [token]);
+
+  const deleteProduct = async (product) => {
+    const warn = product.status === 'PUBLISHED'
+      ? `Học liệu "${product.title}" đang công bố. Xoá hẳn khỏi hệ thống?`
+      : `Xoá hẳn học liệu "${product.title}"?`;
+    if (!window.confirm(warn)) return;
+
+    setDeletingId(product.id);
+    setError('');
+    try {
+      await apiRequest('/admin/products/' + product.id, { method: 'DELETE', token });
+      setProducts((prev) => prev.filter((item) => item.id !== product.id));
+    } catch (requestError) {
+      setError(requestError.message || 'Không xoá được học liệu.');
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const filtered = useMemo(() => products.filter((product) => {
     const matchesQuery = [product.title, product.slug, product.category?.name || ''].join(' ').toLocaleLowerCase('vi').includes(query.toLocaleLowerCase('vi'));
@@ -88,6 +107,7 @@ export function AdminProductsPage() {
         <div><span className="section-kicker">Nội dung hệ thống</span><h1>Quản lý học liệu</h1><p>{products.length} học liệu trong hệ thống.</p></div>
         <Link className="button button-primary" to="/quan-tri/san-pham/tao-moi"><Plus size={18} /> Tạo học liệu</Link>
       </div>
+      {error && <div className="form-error" style={{ marginBottom: 16 }}>{error}</div>}
       <section className="admin-table-card">
         <div className="table-toolbar"><label className="table-search"><Search size={17} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Tìm tiêu đề, slug, danh mục..." /></label><label className="compact-select">Trạng thái<select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}><option value="">Tất cả</option><option value="DRAFT">Chờ duyệt</option><option value="PUBLISHED">Đã công bố</option><option value="HIDDEN">Đang ẩn</option><option value="ARCHIVED">Lưu trữ</option></select></label><span>{filtered.length} kết quả</span></div>
         <div className="table-responsive">
@@ -106,6 +126,15 @@ export function AdminProductsPage() {
                       <Link className="icon-button" to={'/quan-tri/san-pham/' + product.id} aria-label={'Duyệt và chỉnh sửa ' + product.title}><Pencil size={18} /></Link>
                       <Link className="icon-button" to={'/quan-tri/san-pham/' + product.id + '/tai-nguyen'} aria-label={'Quản lý tệp ' + product.title}><Paperclip size={18} /></Link>
                       {product.status === 'PUBLISHED' && <Link className="icon-button" to={'/san-pham/' + product.slug} aria-label={'Xem ' + product.title}><Eye size={18} /></Link>}
+                      <button
+                        type="button"
+                        className="icon-button danger-icon-button"
+                        aria-label={'Xoá ' + product.title}
+                        disabled={deletingId === product.id}
+                        onClick={() => deleteProduct(product)}
+                      >
+                        {deletingId === product.id ? <LoaderCircle className="spin" size={18} /> : <Trash2 size={18} />}
+                      </button>
                     </div>
                   </td>
                 </tr>
