@@ -215,6 +215,16 @@ export function TeacherProductsPage() {
   );
 }
 
+const deliveryTypeLabel = (type) => {
+  if (type === 'EMBED') return 'Chạy trong website';
+  if (type === 'EXTERNAL') return 'Mở tab mới';
+  if (type === 'DOWNLOAD_ONLY') return 'Tải Word / PowerPoint';
+  if (type === 'HTML_PACKAGE') return 'Gói HTML tương tác';
+  return type.replaceAll('_', ' ');
+};
+
+const TEACHER_FILE_ACCEPT = '.pdf,.doc,.docx,.rtf,.odt,.ppt,.pptx,.odp,.xls,.xlsx,.ods,.csv,.txt,.epub,.jpg,.jpeg,.png,.webp,.gif,.mp3,.wav,.m4a,.mp4,.webm,.zip';
+
 export function CreateProductPage({ teacherMode = false, editMode = false }) {
   const { id } = useParams();
   const { token } = useAuth();
@@ -447,11 +457,12 @@ export function CreateProductPage({ teacherMode = false, editMode = false }) {
         <section className="form-section">
           <div className="form-section-title"><span>03</span><div><h2>Cách sử dụng học liệu</h2><p>{teacherMode ? 'Chọn chạy trên web, mở nguồn ngoài hoặc cung cấp tệp để giáo viên tải về.' : 'Chọn cách hệ thống mở nội dung.'}</p></div></div>
           <div className="delivery-options">
-            {(teacherMode ? ['EMBED', 'EXTERNAL', 'DOWNLOAD_ONLY'] : ['EXTERNAL', 'EMBED', 'HTML_PACKAGE', 'DOWNLOAD_ONLY']).map((type) => <label key={type} className={form.deliveryType === type ? 'selected' : ''}><input type="radio" name="deliveryType" value={type} checked={form.deliveryType === type} onChange={() => selectDeliveryType(type)} /><FilePlus2 size={21} /><span>{teacherMode ? (type === 'EMBED' ? 'Chạy trong website' : type === 'EXTERNAL' ? 'Mở tab mới' : 'Tải Word / PowerPoint') : type.replaceAll('_', ' ')}</span></label>)}
+            {(teacherMode ? ['EMBED', 'EXTERNAL', 'DOWNLOAD_ONLY'] : ['EXTERNAL', 'EMBED', 'HTML_PACKAGE', 'DOWNLOAD_ONLY']).map((type) => <label key={type} className={form.deliveryType === type ? 'selected' : ''}><input type="radio" name="deliveryType" value={type} checked={form.deliveryType === type} onChange={() => selectDeliveryType(type)} /><FilePlus2 size={21} /><span>{deliveryTypeLabel(type)}</span></label>)}
           </div>
           {form.deliveryType === 'EXTERNAL' && <label>URL trải nghiệm<input type="url" value={form.experienceUrl} onChange={(event) => setForm({ ...form, experienceUrl: event.target.value })} placeholder="https://..." required /></label>}
           {form.deliveryType === 'EMBED' && <label>{teacherMode ? 'Link học liệu' : 'URL nhúng'}<input type="url" value={form.embedUrl} onChange={(event) => setForm({ ...form, embedUrl: event.target.value })} placeholder="https://..." required /><small>{teacherMode ? 'Hỗ trợ link nhúng và link trang Canva công khai. Hệ thống sẽ mở nội dung trong trình phát nội bộ.' : 'Dùng URL được nhà cung cấp cho phép nhúng.'}</small></label>}
-          {['HTML_PACKAGE', 'DOWNLOAD_ONLY'].includes(form.deliveryType) && <div className="form-note">{teacherMode ? <><strong>Bước 1/2:</strong> Lưu thông tin để tạo hồ sơ học liệu. Ở bước 2, bạn có thể chọn nhiều tệp Word, PowerPoint và tài liệu bổ trợ cùng lúc; chỉ khi có ít nhất một tệp thì hồ sơ mới sẵn sàng để Admin duyệt.</> : 'Tạo bản nháp trước, sau đó tải ZIP hoặc tệp đính kèm trong bước quản lý tài nguyên.'}</div>}
+          {form.deliveryType === 'DOWNLOAD_ONLY' && <div className="form-note"><strong>Bước 1/2:</strong> Lưu thông tin học liệu. Ở bước quản lý tài nguyên, bạn có thể tải nhiều tệp Word, PowerPoint và tài liệu bổ trợ cùng lúc.{teacherMode ? ' Chỉ khi có ít nhất một tệp thì hồ sơ mới sẵn sàng để Admin duyệt.' : ''}</div>}
+          {form.deliveryType === 'HTML_PACKAGE' && !teacherMode && <div className="form-note">Tạo bản nháp trước, sau đó tải gói ZIP trong bước quản lý tài nguyên.</div>}
         </section>
 
         {teacherMode && form.deliveryType !== 'DOWNLOAD_ONLY' && (
@@ -561,8 +572,8 @@ export function AdminAssetsPage({ teacherMode = false }) {
     load();
   }, [id, teacherMode, token]);
 
-  const accept = teacherMode
-    ? '.pdf,.doc,.docx,.rtf,.odt,.ppt,.pptx,.odp,.xls,.xlsx,.ods,.csv,.txt,.epub,.jpg,.jpeg,.png,.webp,.gif,.mp3,.wav,.m4a,.mp4,.webm,.zip'
+  const accept = (teacherMode || product?.deliveryType === 'DOWNLOAD_ONLY')
+    ? TEACHER_FILE_ACCEPT
     : purpose === 'HTML_PACKAGE'
     ? '.zip'
     : purpose === 'THUMBNAIL'
@@ -709,6 +720,7 @@ export function AdminAssetsPage({ teacherMode = false }) {
   const hasWord = downloadAssets.some((asset) => ['doc', 'docx', 'rtf', 'odt'].includes(asset.extension.toLowerCase()));
   const hasPowerPoint = downloadAssets.some((asset) => ['ppt', 'pptx', 'odp'].includes(asset.extension.toLowerCase()));
   const isReady = product.deliveryType !== 'DOWNLOAD_ONLY' || downloadAssets.length > 0;
+  const isWordPowerPointFlow = teacherMode || product.deliveryType === 'DOWNLOAD_ONLY';
   const usedPercent = Math.min(100, (policy.usedBytes / (policy.productFilesMb * 1024 * 1024)) * 100);
   const selectedLimit = purpose === 'HTML_PACKAGE' ? policy.htmlPackageMb : policy.standardFileMb;
 
@@ -719,14 +731,14 @@ export function AdminAssetsPage({ teacherMode = false }) {
         <div>
           <span className="section-kicker">{teacherMode ? 'Tệp dành cho giáo viên' : 'Tài nguyên học liệu'}</span>
           <h1>{product.title}</h1>
-          <p>{teacherMode ? 'Gắn giáo án Word, bài trình chiếu PowerPoint và tài liệu bổ trợ trước khi gửi duyệt.' : 'Kiểm soát định dạng, dung lượng và quyền tải xuống.'}</p>
+          <p>{isWordPowerPointFlow ? 'Gắn giáo án Word, bài trình chiếu PowerPoint và tài liệu bổ trợ.' : 'Kiểm soát định dạng, dung lượng và quyền tải xuống.'}</p>
         </div>
         {product.status === 'PUBLISHED' && <Link className="button button-secondary" to={'/san-pham/' + product.slug}><Eye size={18} /> Xem học liệu</Link>}
       </div>
 
-      {teacherMode && product.deliveryType === 'DOWNLOAD_ONLY' && (
+      {product.deliveryType === 'DOWNLOAD_ONLY' && (
         <section className={'asset-readiness ' + (isReady ? 'is-ready' : 'is-incomplete')} aria-live="polite">
-          <div className="asset-readiness-state">{isReady ? <CheckCircle2 size={22} /> : <AlertCircle size={22} />}<div><span>Bước 2/2</span><strong>{isReady ? 'Học liệu đã sẵn sàng để Admin kiểm duyệt' : 'Cần ít nhất một tệp tải xuống'}</strong><small>{isReady ? 'Bạn vẫn có thể bổ sung, đổi tên hoặc thay thế tệp trước khi được công bố.' : 'Tải Word, PowerPoint hoặc một tài liệu hợp lệ để hoàn tất hồ sơ.'}</small></div></div>
+          <div className="asset-readiness-state">{isReady ? <CheckCircle2 size={22} /> : <AlertCircle size={22} />}<div><span>Bước 2/2</span><strong>{isReady ? (teacherMode ? 'Học liệu đã sẵn sàng để Admin kiểm duyệt' : 'Đã có tệp Word / PowerPoint') : 'Cần ít nhất một tệp tải xuống'}</strong><small>{isReady ? 'Bạn vẫn có thể bổ sung, đổi tên hoặc thay thế tệp.' : 'Tải Word, PowerPoint hoặc một tài liệu hợp lệ để hoàn tất hồ sơ.'}</small></div></div>
           <div className="asset-readiness-checks">
             <span className="done"><FileCheck2 size={16} /> Metadata Môn/Khối</span>
             <span className={downloadAssets.length ? 'done' : ''}><Paperclip size={16} /> {downloadAssets.length || 0} tệp hợp lệ</span>
@@ -738,9 +750,9 @@ export function AdminAssetsPage({ teacherMode = false }) {
 
       <div className="asset-admin-grid">
         <section className="form-section upload-panel">
-          <div className="form-section-title"><span><UploadCloud size={20} /></span><div><h2>Tải bộ tệp</h2><p>Chọn nhiều tệp; hệ thống kiểm tra từng tệp trước khi tải.</p></div></div>
+          <div className="form-section-title"><span><UploadCloud size={20} /></span><div><h2>Tải bộ tệp</h2><p>{isWordPowerPointFlow ? 'Chọn nhiều tệp Word, PowerPoint hoặc tài liệu bổ trợ.' : 'Chọn nhiều tệp; hệ thống kiểm tra từng tệp trước khi tải.'}</p></div></div>
           <form className="stack-form" onSubmit={uploadAsset}>
-            {teacherMode ? <div className="upload-purpose-fixed"><Download size={18} /><div><strong>Tài liệu cho phép tải xuống</strong><small>Hiển thị thành nút tải rõ ràng trên trang chi tiết.</small></div></div> : <label>Mục đích tệp
+            {isWordPowerPointFlow ? <div className="upload-purpose-fixed"><Download size={18} /><div><strong>Tài liệu cho phép tải xuống</strong><small>Hiển thị thành nút tải rõ ràng trên trang chi tiết.</small></div></div> : <label>Mục đích tệp
               <select value={purpose} onChange={(event) => { setPurpose(event.target.value); setFiles([]); setInputKey((value) => value + 1); }}>
                 <option value="DOWNLOAD">Tệp tải xuống</option>
                 <option value="HTML_PACKAGE">Gói HTML tương tác</option>
@@ -749,9 +761,9 @@ export function AdminAssetsPage({ teacherMode = false }) {
             </label>}
             <label className="upload-drop">
               <UploadCloud size={28} />
-              <strong>{files.length ? `Đã chọn ${files.length} tệp` : teacherMode ? 'Thả hoặc chọn nhiều tệp Word, PowerPoint' : 'Chọn tệp từ máy'}</strong>
-              <small>{purposeLabels[purpose]} · tối đa {selectedLimit} MB/tệp · có thể chọn nhiều tệp</small>
-              <input key={inputKey} type="file" accept={accept} multiple={teacherMode || purpose === 'DOWNLOAD'} onChange={selectFiles} />
+              <strong>{files.length ? `Đã chọn ${files.length} tệp` : isWordPowerPointFlow ? 'Thả hoặc chọn nhiều tệp Word, PowerPoint' : 'Chọn tệp từ máy'}</strong>
+              <small>{isWordPowerPointFlow ? 'Word, PowerPoint, PDF và các định dạng hỗ trợ khác' : `${purposeLabels[purpose]} · tối đa ${selectedLimit} MB/tệp · có thể chọn nhiều tệp`}</small>
+              <input key={inputKey} type="file" accept={accept} multiple={isWordPowerPointFlow || purpose === 'DOWNLOAD'} onChange={selectFiles} />
             </label>
             {files.length > 0 && <div className="selected-file-list" aria-label="Tệp đang chờ tải lên">{files.map((selectedFile) => {
               const extension = selectedFile.name.split('.').pop()?.toLowerCase() || '';

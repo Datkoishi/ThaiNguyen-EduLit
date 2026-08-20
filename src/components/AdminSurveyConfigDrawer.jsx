@@ -146,15 +146,20 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
   if (!open) return null;
 
   return (
-    <>
-      <div className="drawer-overlay" onClick={onClose} style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000 }} />
-      <div className="operation-drawer survey-config-drawer" style={{ zIndex: 1001, width: 640, padding: 0, display: 'flex', flexDirection: 'column' }}>
-        <header className="panel-heading" style={{ padding: '24px', borderBottom: '1px solid #e2e8f0', margin: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div className="survey-config-overlay" onClick={onClose} role="presentation">
+      <div
+        className="operation-drawer survey-config-drawer"
+        onClick={(event) => event.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="survey-config-title"
+      >
+        <header className="survey-config-drawer-header">
           <div>
             <span className="section-kicker">Tuỳ chỉnh nâng cao</span>
-            <h2>Bộ câu hỏi khảo sát</h2>
+            <h2 id="survey-config-title">Bộ câu hỏi khảo sát</h2>
           </div>
-          <button className="icon-button" onClick={onClose} type="button"><X size={24} /></button>
+          <button className="icon-button" onClick={onClose} type="button" aria-label="Đóng"><X size={24} /></button>
         </header>
 
         <div className="survey-config-drawer-body">
@@ -259,6 +264,6 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

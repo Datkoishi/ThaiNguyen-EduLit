@@ -7828,10 +7828,50 @@ select:focus-visible {
   resize: vertical;
 }
 
+.survey-config-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(6px);
+}
+
+.survey-config-drawer {
+  width: min(640px, 100%);
+  max-height: min(90vh, 880px);
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: modal-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.survey-config-drawer-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 22px 24px;
+  margin: 0;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.survey-config-drawer-header h2 {
+  margin: 4px 0 0;
+  font-size: 1.25rem;
+}
+
 .survey-config-drawer-body {
   padding: 20px 24px 24px;
   overflow-y: auto;
   flex: 1;
+  min-height: 0;
 }
 
 .survey-config-audience-tabs { margin-bottom: 16px; }
