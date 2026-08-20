@@ -200,6 +200,7 @@ export default function SurveyForm({ onSuccess, onAudienceResolved }) {
         {currentStepData.type === 'info' && (
           <div className="wizard-section">
             <div className="survey-intro-block">
+              {copy.introLabel && <strong className="survey-intro-label">{copy.introLabel}</strong>}
               <p>{copy.intro}</p>
               <p className="survey-intro-reassurance"><strong>{copy.reassurance}</strong></p>
             </div>

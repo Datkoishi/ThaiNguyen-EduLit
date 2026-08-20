@@ -7752,6 +7752,15 @@ select:focus-visible {
 
 .survey-intro-block p { margin: 0 0 10px; }
 .survey-intro-block p:last-child { margin-bottom: 0; }
+.survey-intro-label {
+  display: block;
+  margin-bottom: 10px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
 .survey-intro-reassurance { color: #5b4f77; }
 
 .survey-question-stack { display: flex; flex-direction: column; gap: 16px; }

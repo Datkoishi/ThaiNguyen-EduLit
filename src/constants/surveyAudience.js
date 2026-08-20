@@ -25,9 +25,11 @@ export const SURVEY_COPY = {
     kicker: 'PHIẾU KHẢO SÁT HỌC SINH',
     title: 'Đánh giá bộ học liệu số Văn học dân gian Thái Nguyên',
     subtitle: 'Dành cho học sinh sau khi trải nghiệm học liệu',
+    introLabel: 'Lời mở đầu',
     intro:
-      'Bộ học liệu số AI về Văn học dân gian Thái Nguyên là sản phẩm tâm huyết nhằm đưa văn hóa quê hương đến gần hơn với các em. Vì đang trong giai đoạn hoàn thiện, chúng em rất mong nhận được góp ý thẳng thắn, dù nhỏ nhất.',
-    reassurance: 'Không có câu trả lời đúng hay sai — mọi ý kiến chê hay khen đều quý giá như nhau.',
+      'Bộ học liệu số AI về chủ đề văn học dân gian Thái Nguyên là sản phẩm được chúng em xây dựng với mong muốn đưa những giá trị văn hóa, văn học quê hương đến gần hơn với học sinh bằng những hình thức học tập sinh động và hiện đại. Sản phẩm hiện vẫn đang trong quá trình hoàn thiện, vì vậy mỗi ý kiến đóng góp của các em đều vô cùng quý giá. Chúng em rất mong nhận được những nhận xét chân thành, dù là lời khen, góp ý hay chỉ ra những điểm còn hạn chế, để bộ học liệu ngày càng thiết thực, dễ sử dụng và phù hợp hơn với việc dạy và học.',
+    reassurance:
+      'Ở đây không có câu trả lời sai. Mọi chia sẻ đều được trân trọng như nhau, bởi chính những góp ý chân thành của các em sẽ giúp chúng em hoàn thiện sản phẩm tốt hơn. Chúng em xin chân thành cảm ơn.',
     thankYouTitle: 'Cảm ơn em!',
     thankYouBody:
       'Phiếu khảo sát của em đã được gửi thành công. Những ý kiến đóng góp này rất quan trọng để chúng em tiếp tục cải thiện bộ học liệu.',
@@ -41,9 +43,11 @@ export const SURVEY_COPY = {
     kicker: 'PHIẾU KHẢO SÁT GIÁO VIÊN',
     title: 'Đánh giá chuyên môn bộ học liệu số',
     subtitle: 'Dành cho giáo viên đã trải nghiệm và sử dụng trên lớp',
+    introLabel: 'Lời mở đầu',
     intro:
-      'Bộ học liệu số AI về Văn học dân gian Thái Nguyên đang được hoàn thiện dựa trên góp ý thực tế của thầy cô. Chúng em rất trân trọng những nhận xét chuyên môn thẳng thắn để sản phẩm ngày càng phù hợp với lớp học.',
-    reassurance: 'Không có câu trả lời đúng hay sai — mọi góp ý chuyên môn đều được ghi nhận nghiêm túc.',
+      'Bộ học liệu số AI về chủ đề văn học dân gian Thái Nguyên là sản phẩm được chúng em xây dựng với mong muốn đưa những giá trị văn hóa, văn học quê hương đến gần hơn với học sinh bằng những hình thức học tập sinh động và hiện đại. Sản phẩm hiện vẫn đang trong quá trình hoàn thiện, vì vậy mỗi ý kiến đóng góp của thầy cô đều vô cùng quý giá. Chúng em rất mong nhận được những nhận xét chân thành, dù là lời khen, góp ý hay chỉ ra những điểm còn hạn chế, để bộ học liệu ngày càng thiết thực, dễ sử dụng và phù hợp hơn với việc dạy và học.',
+    reassurance:
+      'Ở đây không có câu trả lời sai. Mọi chia sẻ đều được trân trọng như nhau, bởi chính những góp ý chân thành của thầy cô sẽ giúp chúng em hoàn thiện sản phẩm tốt hơn. Chúng em xin chân thành cảm ơn.',
     thankYouTitle: 'Cảm ơn thầy/cô!',
     thankYouBody:
       'Phiếu khảo sát đã được gửi thành công. Góp ý của thầy/cô sẽ giúp đội ngũ biên soạn cải thiện học liệu tốt hơn.',
