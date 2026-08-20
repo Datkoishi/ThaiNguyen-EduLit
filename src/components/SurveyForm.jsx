@@ -8,6 +8,7 @@ import {
   PRODUCT_EVALUATIONS,
   SURVEY_AUDIENCE,
   SURVEY_COPY,
+  buildQuestionWizardSteps,
   buildSurveyRatings,
   filterQuestionsByAudience,
   surveyAudienceFromRole
@@ -54,26 +55,18 @@ export default function SurveyForm({ onSuccess, onAudienceResolved }) {
     return () => { cancelled = true; };
   }, [token, audience]);
 
-  const sections = useMemo(() => {
-    const list = [];
-    surveyQuestions.forEach((q) => {
-      let section = list.find((s) => s.title === q.section);
-      if (!section) {
-        section = { title: q.section || 'Câu hỏi', questions: [] };
-        list.push(section);
-      }
-      section.questions.push(q);
-    });
-    return list;
-  }, [surveyQuestions]);
+  const questionSteps = useMemo(
+    () => buildQuestionWizardSteps(surveyQuestions),
+    [surveyQuestions]
+  );
 
   const steps = useMemo(() => [
     { type: 'info', title: 'Giới thiệu & thông tin' },
-    ...sections.map((s) => ({ type: 'questions', title: s.title, data: s })),
+    ...questionSteps,
     ...(audience === SURVEY_AUDIENCE.STUDENT
       ? [{ type: 'products', title: 'Đánh giá từng sản phẩm' }]
       : [])
-  ], [sections, audience]);
+  ], [questionSteps, audience]);
 
   const handleProductRatingChange = (pId, value) => {
     setForm((prev) => ({
@@ -185,7 +178,7 @@ export default function SurveyForm({ onSuccess, onAudienceResolved }) {
 
   if (initLoading) return <PageLoader label="Đang tải câu hỏi khảo sát..." />;
   if (initError) return <div className="form-error survey-error">{initError}</div>;
-  if (!surveyQuestions.length) {
+  if (!questionSteps.length) {
     return <div className="form-error survey-error">Hiện chưa có câu hỏi khảo sát cho nhóm này. Vui lòng thử lại sau.</div>;
   }
 

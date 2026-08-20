@@ -28,7 +28,7 @@ import { apiRequest } from '../api.js';
 import { ErrorState, PageLoader } from '../components/Common.jsx';
 import { useAuth } from '../context/AuthContext.jsx';
 import AdminSurveyConfigDrawer from '../components/AdminSurveyConfigDrawer.jsx';
-import { SURVEY_AUDIENCE, normalizeSurveyQuestion } from '../constants/surveyAudience.js';
+import { SURVEY_AUDIENCE, flattenAnswerableQuestions, normalizeSurveyQuestion } from '../constants/surveyAudience.js';
 
 const dateTimeLabel = (value) => value
   ? new Intl.DateTimeFormat('vi-VN', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -450,9 +450,14 @@ export function AdminSurveyPage() {
     [surveys, audienceFilter]
   );
 
-  const scopedQuestions = useMemo(
+  const scopedTree = useMemo(
     () => adminQuestions.filter((q) => questionAudienceOf(q) === audienceFilter),
     [adminQuestions, audienceFilter]
+  );
+
+  const scopedQuestions = useMemo(
+    () => flattenAnswerableQuestions(scopedTree),
+    [scopedTree]
   );
 
   const total = scopedSurveys.length;

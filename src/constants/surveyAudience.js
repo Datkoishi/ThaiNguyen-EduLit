@@ -3,6 +3,11 @@ export const SURVEY_AUDIENCE = {
   TEACHER: 'TEACHER'
 };
 
+export const SURVEY_KIND = {
+  GROUP: 'GROUP',
+  QUESTION: 'QUESTION'
+};
+
 export function surveyAudienceFromRole(role) {
   return role === 'TEACHER' ? SURVEY_AUDIENCE.TEACHER : SURVEY_AUDIENCE.STUDENT;
 }
@@ -58,20 +63,103 @@ export const PRODUCT_EVALUATIONS = [
 ];
 
 export function normalizeSurveyQuestion(question = {}) {
+  const inferredKind = question.kind
+    || (question.type == null && Array.isArray(question.children) && question.children.length
+      ? SURVEY_KIND.GROUP
+      : SURVEY_KIND.QUESTION);
+
   return {
     ...question,
+    kind: inferredKind,
+    parentId: question.parentId ?? question.parent_id ?? null,
     targetAudience: question.targetAudience || question.target_audience || null,
     ratingStyle: question.ratingStyle || question.rating_style || 'NUMBER',
     isActive: question.isActive ?? question.is_active ?? true,
-    required: question.required !== false
+    required: question.required !== false,
+    children: Array.isArray(question.children)
+      ? question.children.map(normalizeSurveyQuestion)
+      : []
   };
+}
+
+export function isSurveyGroup(question) {
+  return question?.kind === SURVEY_KIND.GROUP;
+}
+
+export function isSurveyQuestion(question) {
+  return !question?.kind || question.kind === SURVEY_KIND.QUESTION;
+}
+
+/** Flatten nested tree to answerable QUESTION nodes only (for submit + stats). */
+export function flattenAnswerableQuestions(nodes = []) {
+  const out = [];
+  const walk = (list) => {
+    (list || []).forEach((raw) => {
+      const node = normalizeSurveyQuestion(raw);
+      if (isSurveyGroup(node)) {
+        walk(node.children);
+        return;
+      }
+      if (isSurveyQuestion(node)) out.push(node);
+    });
+  };
+  walk(nodes);
+  return out;
 }
 
 export function filterQuestionsByAudience(questions, audience) {
   return (questions || [])
     .map(normalizeSurveyQuestion)
     .filter((q) => q.isActive !== false)
-    .filter((q) => !q.targetAudience || q.targetAudience === audience);
+    .filter((q) => !q.targetAudience || q.targetAudience === audience)
+    .map((q) => ({
+      ...q,
+      children: (q.children || [])
+        .map(normalizeSurveyQuestion)
+        .filter((child) => child.isActive !== false)
+        .filter((child) => !child.targetAudience || child.targetAudience === audience)
+    }));
+}
+
+/** Build wizard question steps: GROUP → one step; standalone QUESTION → bucket by section, preserve order. */
+export function buildQuestionWizardSteps(nodes = []) {
+  const steps = [];
+  let pending = null;
+
+  const flushPending = () => {
+    if (pending?.questions.length) {
+      steps.push({ type: 'questions', title: pending.title, data: pending });
+    }
+    pending = null;
+  };
+
+  (nodes || []).map(normalizeSurveyQuestion).forEach((node) => {
+    if (node.isActive === false) return;
+
+    if (isSurveyGroup(node)) {
+      flushPending();
+      const children = (node.children || []).filter((child) => isSurveyQuestion(child) && child.isActive !== false);
+      if (children.length) {
+        steps.push({
+          type: 'questions',
+          title: node.text || 'Nhóm câu hỏi',
+          data: { title: node.text || 'Nhóm câu hỏi', questions: children, groupId: node.id }
+        });
+      }
+      return;
+    }
+
+    if (!isSurveyQuestion(node)) return;
+    const title = node.section || 'Câu hỏi';
+    if (!pending || pending.title !== title) {
+      flushPending();
+      pending = { title, questions: [] };
+    }
+    pending.questions.push(node);
+  });
+
+  flushPending();
+  return steps;
 }
 
 export function surveysMePath(audience) {
@@ -80,7 +168,7 @@ export function surveysMePath(audience) {
 
 export function buildSurveyRatings(questions, ratings = {}) {
   const payload = {};
-  questions.forEach((q) => {
+  flattenAnswerableQuestions(questions).forEach((q) => {
     const value = ratings[q.id];
     if (q.type === 'TEXT_SHORT') {
       if (typeof value === 'string' && value.trim()) payload[q.id] = value.trim();

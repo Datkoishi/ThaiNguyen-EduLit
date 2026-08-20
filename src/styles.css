@@ -8073,7 +8073,45 @@ select:focus-visible {
   background: #efeaff;
 }
 
-.survey-audience-filter { margin-bottom: 14px; }
+.survey-config-node {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.survey-config-item.is-child {
+  margin-left: 28px;
+  background: #fff;
+  border-style: dashed;
+}
+
+.survey-config-children {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+}
+
+.survey-config-children-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.survey-config-child-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+}
 
 @media (max-width: 960px) {
   .survey-config-drawer-header {
