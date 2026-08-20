@@ -7899,7 +7899,7 @@ select:focus-visible {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(320px, 420px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
   gap: 20px;
   padding: 20px 28px 28px;
   overflow: hidden;
@@ -8088,7 +8088,7 @@ select:focus-visible {
 
   .survey-config-drawer-body {
     grid-template-columns: 1fr;
-    grid-template-rows: auto minmax(240px, 1fr);
+    grid-template-rows: minmax(280px, 1fr) auto;
     padding: 16px;
     overflow-y: auto;
   }

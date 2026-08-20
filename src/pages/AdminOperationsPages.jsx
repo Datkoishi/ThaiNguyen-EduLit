@@ -927,6 +927,7 @@ export function AdminSurveyPage() {
         open={configOpen}
         onClose={() => setConfigOpen(false)}
         onChanged={reloadQuestions}
+        initialAudience={audienceFilter}
       />
     </div>
   );
