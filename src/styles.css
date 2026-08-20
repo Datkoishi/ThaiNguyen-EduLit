@@ -7831,23 +7831,28 @@ select:focus-visible {
 .survey-config-overlay {
   position: fixed;
   inset: 0;
-  z-index: 2000;
+  z-index: 4000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 24px;
   background: rgba(15, 23, 42, 0.55);
   backdrop-filter: blur(6px);
+  overflow: auto;
 }
 
 .survey-config-drawer {
   width: min(640px, 100%);
   max-height: min(90vh, 880px);
-  margin: 0;
+  margin: auto;
   padding: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  background: linear-gradient(135deg, #fff, #faf8ff);
+  border: 1px solid #ddd4f1;
+  border-radius: 19px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.28);
   animation: modal-enter 0.28s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

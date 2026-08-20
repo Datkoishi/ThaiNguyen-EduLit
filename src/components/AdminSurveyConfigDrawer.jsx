@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Edit2, Trash2, X, Save, GripVertical } from 'lucide-react';
 import { apiRequest } from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -33,6 +34,15 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
   useEffect(() => {
     if (open) loadQuestions();
   }, [open, token]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [open]);
 
   const loadQuestions = async () => {
     setLoading(true);
@@ -145,10 +155,10 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div className="survey-config-overlay" onClick={onClose} role="presentation">
       <div
-        className="operation-drawer survey-config-drawer"
+        className="survey-config-drawer"
         onClick={(event) => event.stopPropagation()}
         role="dialog"
         aria-modal="true"
@@ -264,6 +274,7 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
