@@ -151,6 +151,13 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
       targetAudience: q.targetAudience || SURVEY_AUDIENCE.STUDENT,
       options: Array.isArray(q.options) ? q.options.join(', ') : ''
     });
+    if (q.targetAudience && q.targetAudience !== audienceTab) {
+      setAudienceTab(q.targetAudience);
+    }
+    requestAnimationFrame(() => {
+      document.getElementById('survey-config-question-text')?.focus();
+      document.getElementById('survey-config-form-panel')?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    });
   };
 
   if (!open) return null;
@@ -193,10 +200,15 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
         {error && <div className="form-error survey-config-error">{error}</div>}
 
         <div className="survey-config-drawer-body">
-          <form className="survey-config-form" onSubmit={handleSave}>
+          <form id="survey-config-form-panel" className="survey-config-form" onSubmit={handleSave}>
             <h3>{editingId ? 'Sửa câu hỏi' : 'Thêm câu hỏi mới'} — {AUDIENCE_LABELS[form.targetAudience]}</h3>
             <label>Nội dung câu hỏi
-              <input value={form.text} onChange={(e) => setForm({ ...form, text: e.target.value })} required />
+              <input
+                id="survey-config-question-text"
+                value={form.text}
+                onChange={(e) => setForm({ ...form, text: e.target.value })}
+                required
+              />
             </label>
             <label>Nhóm tiêu chí (Section)
               <input value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} required placeholder="VD: I. MỨC ĐỘ HỨNG THÚ" />
@@ -258,19 +270,50 @@ export default function AdminSurveyConfigDrawer({ open, onClose, onChanged }) {
             <h3>Danh sách — {AUDIENCE_LABELS[audienceTab]} ({filteredQuestions.length})</h3>
             <div className="survey-config-list-scroll">
               {loading ? <p>Đang tải...</p> : filteredQuestions.map((q) => (
-                <div key={q.id} className={'survey-config-item' + (q.isActive ? '' : ' is-inactive')}>
-                  <GripVertical size={20} color="#94a3b8" />
-                  <div className="survey-config-item-copy">
-                    <div className="survey-config-item-meta">{q.section} • {q.type}{q.ratingStyle === 'EMOJI' ? ' • emoji' : ''}{q.required === false ? ' • tuỳ chọn' : ''}</div>
-                    <div>{q.text}</div>
-                    {q.options?.length > 0 && <small>Đáp án: {q.options.join(', ')}</small>}
-                  </div>
+                <div
+                  key={q.id}
+                  className={
+                    'survey-config-item'
+                    + (q.isActive ? '' : ' is-inactive')
+                    + (editingId === q.id ? ' is-editing' : '')
+                  }
+                >
+                  <button
+                    type="button"
+                    className="survey-config-item-main"
+                    onClick={() => startEdit(q)}
+                  >
+                    <GripVertical size={20} color="#94a3b8" aria-hidden="true" />
+                    <span className="survey-config-item-copy">
+                      <span className="survey-config-item-meta">{q.section} • {q.type}{q.ratingStyle === 'EMOJI' ? ' • emoji' : ''}{q.required === false ? ' • tuỳ chọn' : ''}</span>
+                      <span className="survey-config-item-text">{q.text}</span>
+                      {q.options?.length > 0 && <small>Đáp án: {q.options.join(', ')}</small>}
+                    </span>
+                  </button>
                   <div className="survey-config-item-actions">
-                    <button type="button" onClick={() => toggleStatus(q.id, q.isActive)} className="text-button">
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); toggleStatus(q.id, q.isActive); }}
+                      className="text-button"
+                    >
                       {q.isActive ? 'Ẩn' : 'Bật'}
                     </button>
-                    <button type="button" onClick={() => startEdit(q)} className="icon-button" aria-label="Sửa"><Edit2 size={16} /></button>
-                    <button type="button" onClick={() => handleDelete(q.id)} className="icon-button danger-icon-button" aria-label="Xoá"><Trash2 size={16} /></button>
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); startEdit(q); }}
+                      className={'button button-secondary survey-config-edit-btn' + (editingId === q.id ? ' is-active' : '')}
+                      aria-label={'Sửa: ' + q.text}
+                    >
+                      <Edit2 size={15} /> Sửa
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); handleDelete(q.id); }}
+                      className="icon-button danger-icon-button"
+                      aria-label={'Xoá: ' + q.text}
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
               ))}
